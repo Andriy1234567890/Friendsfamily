@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="sk">
+<html lang="uk">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kontrola zvyškov</title>
+  <title>Контроль залишків бару</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex">
@@ -11,16 +11,16 @@
   <div id="sidebar" class="bg-white w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 shadow-md">
     <nav>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="alcohol">
-        <span>🍹</span><span>Alko</span>
+        <span>🍹</span><span>Алкогольні</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="nonalcohol">
-        <span>🧃</span><span>Nealko</span>
+        <span>🧃</span><span>Безалкогольні</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="stock">
-        <span>🧑‍🌾</span><span>Sklad</span>
+        <span>🧑‍🌾</span><span>Склад</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="purchase">
-        <span>🛒</span><span>Nakup</span>
+        <span>🛒</span><span>Закупка</span>
       </a>
     </nav>
   </div>
@@ -30,7 +30,10 @@
     <!-- Hamburger button -->
     <button id="menu-btn" class="md:hidden mb-4 bg-gray-200 px-4 py-2 rounded">Меню</button>
 
-    <h1 class="text-2xl font-bold mb-4">Kontrola zvyškov</h1>
+    <!-- Back button -->
+    <button id="back-btn" class="hidden md:hidden mb-4 bg-gray-300 px-4 py-2 rounded">Назад</button>
+
+    <h1 class="text-2xl font-bold mb-4">Контроль залишків</h1>
 
     <!-- Tab contents -->
     <div id="nonalcohol" class="tab-content hidden"></div>
@@ -46,34 +49,42 @@
       document.getElementById('sidebar').classList.toggle('-translate-x-full');
     });
 
-    	document.querySelectorAll('.sidebar-tab').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-    document.getElementById(btn.dataset.tab).classList.remove('hidden');
+    document.getElementById('back-btn').addEventListener('click', () => {
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+      document.getElementById('back-btn').classList.add('hidden');
+      document.querySelector('h1').textContent = 'Контроль залишків';
+    });
 
-    // Закрити меню на мобільному
-    if (window.innerWidth < 768) {
-      document.getElementById('sidebar').classList.add('-translate-x-full');
-    }
-  });
-});
+    document.querySelectorAll('.sidebar-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        const tab = document.getElementById(btn.dataset.tab);
+        tab.classList.remove('hidden');
 
+        // Показати кнопку "Назад" на мобільному
+        if (window.innerWidth < 768) {
+          document.getElementById('back-btn').classList.remove('hidden');
+          document.getElementById('sidebar').classList.add('-translate-x-full');
+          document.querySelector('h1').textContent = btn.textContent.trim();
+        }
+      });
+    });
 
     // Ініціалізація розділів
     categories.forEach(cat => {
       const container = document.getElementById(cat);
       container.innerHTML = `
         <form onsubmit="addProduct(event, '${cat}')" class="space-y-2">
-          <input type="text" id="${cat}-name" placeholder="Meno" required class="border p-2 w-full rounded">
-          <input type="number" id="${cat}-quantity" placeholder="Zvyšok" required class="border p-2 w-full rounded">
-          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Pridat</button>
+          <input type="text" id="${cat}-name" placeholder="Назва продукту" required class="border p-2 w-full rounded">
+          <input type="number" id="${cat}-quantity" placeholder="Кількість" required class="border p-2 w-full rounded">
+          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Додати</button>
         </form>
         <table class="w-full mt-4 table-auto border border-gray-300">
           <thead>
             <tr class="bg-gray-200">
-              <th class="p-2 border">Meno</th>
-              <th class="p-2 border">Zvyšok</th>
-              <th class="p-2 border">Zmenit</th>
+              <th class="p-2 border">Назва</th>
+              <th class="p-2 border">Кількість</th>
+              <th class="p-2 border">Дії</th>
             </tr>
           </thead>
           <tbody id="${cat}-table"></tbody>
