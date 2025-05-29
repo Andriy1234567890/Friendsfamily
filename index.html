@@ -14,7 +14,7 @@
   <div id="sidebar" class="bg-white w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 shadow-md">
     <nav>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="alcohol">
-        <span>🍹</span><span>Алкаппогольні</span>
+        <span>🍹</span><span>Алкапі</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="nonalcohol">
         <span>🧃</span><span>Безалкогольні</span>
@@ -147,23 +147,29 @@
     window.addProduct = async function (event, cat) {
   event.preventDefault();
 
-  const form = event.target;
-  const nameInput = form.querySelector('input[type="text"]');
-  const quantityInput = form.querySelector('input[type="number"]');
+  const form = event.target.closest("form");
+  const nameInput = form.querySelector(`#${cat}-name`);
+  const quantityInput = form.querySelector(`#${cat}-quantity`);
 
   const name = nameInput.value.trim();
   const quantity = parseInt(quantityInput.value);
 
-  if (name && !isNaN(quantity)) {
-    await db.collection(cat).doc(name).set({ name, quantity });
-    await renderTable(cat);
+  if (!name || isNaN(quantity)) {
+    alert("Будь ласка, введіть назву та кількість.");
+    return;
+  }
 
+  try {
+    await db.collection(cat).doc(name).set({ name, quantity });
     nameInput.value = '';
     quantityInput.value = '';
-  } else {
-    alert("Будь ласка, введіть коректні назву і кількість.");
+    await renderTable(cat);
+  } catch (err) {
+    console.error("Firestore помилка:", err);
+    alert("Помилка при збереженні до Firestore.");
   }
-}
+};
+
 
 
     window.updateQuantity = async function (cat, name, newQuantity) {
