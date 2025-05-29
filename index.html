@@ -46,12 +46,18 @@
       document.getElementById('sidebar').classList.toggle('-translate-x-full');
     });
 
-    document.querySelectorAll('.sidebar-tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-        document.getElementById(btn.dataset.tab).classList.remove('hidden');
-      });
-    });
+    	document.querySelectorAll('.sidebar-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    document.getElementById(btn.dataset.tab).classList.remove('hidden');
+
+    // Закрити меню на мобільному
+    if (window.innerWidth < 768) {
+      document.getElementById('sidebar').classList.add('-translate-x-full');
+    }
+  });
+});
+
 
     // Ініціалізація розділів
     categories.forEach(cat => {
