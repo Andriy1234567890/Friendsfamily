@@ -28,12 +28,9 @@
 
   <!-- Main content -->
   <div class="flex-1 p-6">
-    <!-- Hamburger button -->
     <button id="menu-btn" class="md:hidden mb-4 bg-gray-200 px-4 py-2 rounded">Menu</button>
-
     <h1 class="text-2xl font-bold mb-4">Kontrola zvyškov</h1>
 
-    <!-- Tab contents -->
     <div id="nonalcohol" class="tab-content hidden"></div>
     <div id="alcohol" class="tab-content hidden"></div>
     <div id="stock" class="tab-content hidden"></div>
@@ -71,7 +68,7 @@
       const { data, error } = await client.from(tabName).select('*');
       const container = document.getElementById(tabName);
       container.innerHTML = `
-        <form onsubmit="addItem(event, '${tabName}')" class="space-y-2">
+        <form id="form-${tabName}" class="space-y-2">
           <input type="text" id="${tabName}-name" placeholder="Назва" required class="border p-2 w-full rounded">
           <input type="number" id="${tabName}-quantity" placeholder="Кількість" required class="border p-2 w-full rounded">
           <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Додати</button>
@@ -79,58 +76,70 @@
         <table class="w-full mt-4 table-auto border border-gray-300">
           <thead>
             <tr class="bg-gray-200">
-              <th class="p-2 border">Meno</th>
-              <th class="p-2 border">Počet</th>
-              <th class="p-2 border">Zmenit</th>
+              <th class="p-2 border">Назва</th>
+              <th class="p-2 border">Кількість</th>
+              <th class="p-2 border">Змінити</th>
+              ${tabName === 'purchase' ? '<th class="p-2 border">Дія</th>' : ''}
             </tr>
           </thead>
           <tbody id="${tabName}-table"></tbody>
         </table>
       `;
+
+      document.getElementById(`form-${tabName}`).addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById(`${tabName}-name`).value.trim();
+        const quantity = parseInt(document.getElementById(`${tabName}-quantity`).value);
+        if (name && !isNaN(quantity)) {
+          await client.from(tabName).insert([{ name, quantity }]);
+          renderTable(tabName);
+        }
+      });
+
       const tbody = document.getElementById(`${tabName}-table`);
       tbody.innerHTML = '';
+
       if (data) {
-        data.forEach(item => {
+        for (const item of data) {
+          const isLow = (tabName === 'stock' && item.quantity <= 2) ||
+                        ((tabName === 'alcohol' || tabName === 'nonalcohol') && item.quantity <= 5);
+
+          if (isLow && tabName !== 'purchase') {
+            await maybeAddToPurchase(item.name, item.quantity);
+          }
+
+          const quantityClass = isLow ? 'text-red-600 font-bold' : '';
           const row = document.createElement('tr');
           row.className = "border-b";
+
           row.innerHTML = `
             <td class="p-2 border">${item.name}</td>
-            <td class="p-2 border"><input type="number" value="${item.quantity}" onchange="updateQuantity('${tabName}', ${item.id}, this.value)" class="border p-1 rounded w-full"></td>
-            <td class="p-2 border"><button onclick="deleteItem('${tabName}', ${item.id})" class="text-red-500">Видалити</button></td>
+            <td class="p-2 border">
+              <input type="number" value="${item.quantity}" class="border p-1 rounded w-full ${quantityClass}"
+                onchange="updateQuantity('${tabName}', ${item.id}, this.value)">
+            </td>
+            <td class="p-2 border">
+              <button onclick="deleteItem('${tabName}', ${item.id})" class="text-red-500">Видалити</button>
+            </td>
+            ${
+              tabName === 'purchase'
+                ? `<td class="p-2 border">
+                    <button onclick="markAsPurchased('${item.name}', ${item.quantity})"
+                      class="bg-green-500 text-white px-2 py-1 rounded">Закуплено</button>
+                   </td>`
+                : ''
+            }
           `;
+
           tbody.appendChild(row);
-        });
+        }
       }
-
-      highlightLowStock();
     }
 
-    function highlightLowStock() {
-      ['nonalcohol', 'alcohol', 'stock'].forEach(tabName => {
-        const tbody = document.getElementById(`${tabName}-table`);
-        if (!tbody) return;
-
-        tbody.querySelectorAll('input[type="number"]').forEach(input => {
-          const value = parseInt(input.value);
-          if (isNaN(value)) return;
-
-          if ((tabName === 'stock' && value <= 2) || (tabName !== 'stock' && value <= 5)) {
-            input.classList.add('text-red-600', 'font-bold');
-          } else {
-            input.classList.remove('text-red-600', 'font-bold');
-          }
-        });
-      });
-    }
-
-    window.addItem = async function (event, tabName) {
-      event.preventDefault();
-      const name = document.getElementById(`${tabName}-name`).value.trim();
-      const quantity = parseInt(document.getElementById(`${tabName}-quantity`).value);
-      if (name && !isNaN(quantity)) {
-        await client.from(tabName).insert([{ name, quantity }]);
-        renderTable(tabName);
-        event.target.reset();
+    async function maybeAddToPurchase(name, quantity) {
+      const { data: exists } = await client.from('purchase').select('*').eq('name', name).maybeSingle();
+      if (!exists) {
+        await client.from('purchase').insert([{ name, quantity }]);
       }
     }
 
@@ -144,7 +153,24 @@
       renderTable(tabName);
     }
 
-    // Автоматично завантажуємо перший таб
+    window.markAsPurchased = async function (name, quantity) {
+      await client.from('purchase').delete().eq('name', name);
+
+      const tabs = ['alcohol', 'nonalcohol', 'stock'];
+      for (const tab of tabs) {
+        const { data: exists } = await client.from(tab).select('*').eq('name', name).maybeSingle();
+        if (exists) {
+          await client.from(tab).update({ quantity: exists.quantity + quantity }).eq('id', exists.id);
+          renderTable('purchase');
+          return;
+        }
+      }
+
+      // Якщо не знайдено — додаємо в stock
+      await client.from('stock').insert([{ name, quantity }]);
+      renderTable('purchase');
+    }
+
     renderTable('nonalcohol');
   </script>
 </body>
