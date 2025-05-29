@@ -101,6 +101,26 @@
           tbody.appendChild(row);
         });
       }
+
+      highlightLowStock();
+    }
+
+    function highlightLowStock() {
+      ['nonalcohol', 'alcohol', 'stock'].forEach(tabName => {
+        const tbody = document.getElementById(`${tabName}-table`);
+        if (!tbody) return;
+
+        tbody.querySelectorAll('input[type="number"]').forEach(input => {
+          const value = parseInt(input.value);
+          if (isNaN(value)) return;
+
+          if ((tabName === 'stock' && value <= 2) || (tabName !== 'stock' && value <= 5)) {
+            input.classList.add('text-red-600', 'font-bold');
+          } else {
+            input.classList.remove('text-red-600', 'font-bold');
+          }
+        });
+      });
     }
 
     window.addItem = async function (event, tabName) {
