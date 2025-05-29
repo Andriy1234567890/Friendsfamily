@@ -41,7 +41,7 @@
   </div>
 
   <script>
-    const supabase = supabase.createClient(
+    const client = supabase.createClient(
       "https://wmjvkmdignmlnbphqxxd.supabase.co",
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtanZrbWRpZ25tbG5icGhxeHhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1MTU0MzMsImV4cCI6MjA2NDA5MTQzM30.EnEcHJaVyOj6IPmBTR_L2U5BazeaWK3kLnE9aycVZC8"
     );
@@ -62,11 +62,13 @@
           document.getElementById('sidebar').classList.add('-translate-x-full');
           document.querySelector('h1').textContent = btn.textContent.trim();
         }
+
+        renderTable(btn.dataset.tab);
       });
     });
 
     async function renderTable(tabName) {
-      const { data, error } = await supabase.from(tabName).select('*');
+      const { data, error } = await client.from(tabName).select('*');
       const container = document.getElementById(tabName);
       container.innerHTML = `
         <form onsubmit="addItem(event, '${tabName}')" class="space-y-2">
@@ -87,16 +89,18 @@
       `;
       const tbody = document.getElementById(`${tabName}-table`);
       tbody.innerHTML = '';
-      data.forEach(item => {
-        const row = document.createElement('tr');
-        row.className = "border-b";
-        row.innerHTML = `
-          <td class="p-2 border">${item.name}</td>
-          <td class="p-2 border"><input type="number" value="${item.quantity}" onchange="updateQuantity('${tabName}', ${item.id}, this.value)" class="border p-1 rounded w-full"></td>
-          <td class="p-2 border"><button onclick="deleteItem('${tabName}', ${item.id})" class="text-red-500">Видалити</button></td>
-        `;
-        tbody.appendChild(row);
-      });
+      if (data) {
+        data.forEach(item => {
+          const row = document.createElement('tr');
+          row.className = "border-b";
+          row.innerHTML = `
+            <td class="p-2 border">${item.name}</td>
+            <td class="p-2 border"><input type="number" value="${item.quantity}" onchange="updateQuantity('${tabName}', ${item.id}, this.value)" class="border p-1 rounded w-full"></td>
+            <td class="p-2 border"><button onclick="deleteItem('${tabName}', ${item.id})" class="text-red-500">Видалити</button></td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
     }
 
     window.addItem = async function (event, tabName) {
@@ -104,28 +108,24 @@
       const name = document.getElementById(`${tabName}-name`).value.trim();
       const quantity = parseInt(document.getElementById(`${tabName}-quantity`).value);
       if (name && !isNaN(quantity)) {
-        await supabase.from(tabName).insert([{ name, quantity }]);
+        await client.from(tabName).insert([{ name, quantity }]);
         renderTable(tabName);
         event.target.reset();
       }
     }
 
     window.updateQuantity = async function (tabName, id, quantity) {
-      await supabase.from(tabName).update({ quantity: parseInt(quantity) }).eq('id', id);
+      await client.from(tabName).update({ quantity: parseInt(quantity) }).eq('id', id);
       renderTable(tabName);
     }
 
     window.deleteItem = async function (tabName, id) {
-      await supabase.from(tabName).delete().eq('id', id);
+      await client.from(tabName).delete().eq('id', id);
       renderTable(tabName);
     }
 
-    document.querySelector('[data-tab="stock"]').addEventListener('click', () => renderTable('stock'));
-    document.querySelector('[data-tab="alcohol"]').addEventListener('click', () => renderTable('alcohol'));
-    document.querySelector('[data-tab="nonalcohol"]').addEventListener('click', () => renderTable('nonalcohol'));
-    document.querySelector('[data-tab="purchase"]').addEventListener('click', () => renderTable('purchase'));
-
-    document.querySelector('[data-tab="nonalcohol"]').click();
+    // Автоматично завантажуємо перший таб
+    renderTable('nonalcohol');
   </script>
 </body>
 </html>
