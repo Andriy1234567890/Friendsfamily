@@ -28,7 +28,7 @@
   <!-- Main content -->
   <div class="flex-1 p-6">
     <!-- Hamburger button -->
-    <button id="menu-btn" class="md:hidden mb-4 bg-gray-200 px-4 py-2 rounded">Меню</button>
+    <button id="menu-btn" class="md:hidden mb-4 bg-gray-200 px-4 py-2 rounded">Menu</button>
 
     <h1 class="text-2xl font-bold mb-4">Kontrola zvyškov</h1>
 
@@ -46,20 +46,19 @@
       document.getElementById('sidebar').classList.toggle('-translate-x-full');
     });
 
-    	document.querySelectorAll('.sidebar-tab').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-    document.getElementById(btn.dataset.tab).classList.remove('hidden');
+    document.querySelectorAll('.sidebar-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        const tab = document.getElementById(btn.dataset.tab);
+        tab.classList.remove('hidden');
 
-    // Закрити меню на мобільному
-    if (window.innerWidth < 768) {
-      document.getElementById('sidebar').classList.add('-translate-x-full');
-    }
-  });
-});
- 
+        if (window.innerWidth < 768) {
+          document.getElementById('sidebar').classList.add('-translate-x-full');
+          document.querySelector('h1').textContent = btn.textContent.trim();
+        }
+      });
+    });
 
-    // Ініціалізація розділів
     categories.forEach(cat => {
       const container = document.getElementById(cat);
       container.innerHTML = `
@@ -94,6 +93,8 @@
       const data = getData(cat);
       const table = document.getElementById(`${cat}-table`);
       table.innerHTML = '';
+      const lowStock = [];
+
       data.forEach((product, index) => {
         const row = document.createElement('tr');
         row.className = "border-b";
@@ -103,7 +104,29 @@
           <td class="p-2 border"><button onclick="removeProduct('${cat}', ${index})" class="text-red-500">Видалити</button></td>
         `;
         table.appendChild(row);
+
+        // Умови для автоматичного додавання до закупки
+        if ((cat === 'alcohol' || cat === 'nonalcohol') && product.quantity < 5) {
+          lowStock.push(product);
+        } else if (cat === 'stock' && product.quantity < 2) {
+          lowStock.push(product);
+        }
       });
+
+      if (lowStock.length > 0 && cat !== 'purchase') {
+        const purchaseData = getData('purchase');
+        let changed = false;
+        lowStock.forEach(p => {
+          if (!purchaseData.find(item => item.name === p.name)) {
+            purchaseData.push({ name: p.name, quantity: 1 });
+            changed = true;
+          }
+        });
+        if (changed) {
+          saveData('purchase', purchaseData);
+          renderTable('purchase');
+        }
+      }
     }
 
     function addProduct(event, cat) {
@@ -123,6 +146,7 @@
       const data = getData(cat);
       data[index].quantity = parseInt(newQuantity);
       saveData(cat, data);
+      renderTable(cat);
     }
 
     function removeProduct(cat, index) {
@@ -132,7 +156,6 @@
       renderTable(cat);
     }
 
-    // Відкрити перший таб за замовчуванням
     document.querySelector('[data-tab="nonalcohol"]').click();
   </script>
 </body>
