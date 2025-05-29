@@ -1,10 +1,34 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kontrola zvyškov</title>
   <script src="https://cdn.tailwindcss.com"></script>
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyDaE-NfvmNxTRPOkLbbUPKe589HTcK1t4U",
+  authDomain: "friendfamily-f8be7.firebaseapp.com",
+  projectId: "friendfamily-f8be7",
+  storageBucket: "friendfamily-f8be7.firebasestorage.app",
+  messagingSenderId: "73705575097",
+  appId: "1:73705575097:web:cc3441efbf32cb10d74168",
+  measurementId: "G-1SMBH40G6T"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 </head>
 <body class="bg-gray-100 min-h-screen flex">
   <!-- Sidebar -->
