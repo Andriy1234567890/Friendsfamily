@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kontrola zvyškov</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex">
+  <!-- Sidebar -->
+  <div id="sidebar" class="bg-white w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 shadow-md">
+    <nav>
+      <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="alcohol">
+        <span>🍹</span><span>Alko</span>
+      </a>
+      <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="nonalcohol">
+        <span>🧃</span><span>Nealko</span>
+      </a>
+      <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="stock">
+        <span>🧑‍🌾</span><span>Sklad</span>
+      </a>
+      <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="purchase">
+        <span>🛒</span><span>Nakup</span>
+      </a>
+    </nav>
+  </div>
+
+  <!-- Main content -->
+  <div class="flex-1 p-6">
+    <!-- Hamburger button -->
+    <button id="menu-btn" class="md:hidden mb-4 bg-gray-200 px-4 py-2 rounded">Меню</button>
+
+    <h1 class="text-2xl font-bold mb-4">Kontrola zvyškov</h1>
+
+    <!-- Tab contents -->
+    <div id="nonalcohol" class="tab-content hidden"></div>
+    <div id="alcohol" class="tab-content hidden"></div>
+    <div id="stock" class="tab-content hidden"></div>
+    <div id="purchase" class="tab-content hidden"></div>
+  </div>
+
+  <script>
+    const categories = ['nonalcohol', 'alcohol', 'stock', 'purchase'];
+
+    document.getElementById('menu-btn').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('-translate-x-full');
+    });
+
+    document.querySelectorAll('.sidebar-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.getElementById(btn.dataset.tab).classList.remove('hidden');
+      });
+    });
+
+    // Ініціалізація розділів
+    categories.forEach(cat => {
+      const container = document.getElementById(cat);
+      container.innerHTML = `
+        <form onsubmit="addProduct(event, '${cat}')" class="space-y-2">
+          <input type="text" id="${cat}-name" placeholder="Meno" required class="border p-2 w-full rounded">
+          <input type="number" id="${cat}-quantity" placeholder="Zvyšok" required class="border p-2 w-full rounded">
+          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Pridat</button>
+        </form>
+        <table class="w-full mt-4 table-auto border border-gray-300">
+          <thead>
+            <tr class="bg-gray-200">
+              <th class="p-2 border">Meno</th>
+              <th class="p-2 border">Zvyšok</th>
+              <th class="p-2 border">Zmenit</th>
+            </tr>
+          </thead>
+          <tbody id="${cat}-table"></tbody>
+        </table>
+      `;
+      renderTable(cat);
+    });
+
+    function getData(cat) {
+      return JSON.parse(localStorage.getItem(cat)) || [];
+    }
+
+    function saveData(cat, data) {
+      localStorage.setItem(cat, JSON.stringify(data));
+    }
+
+    function renderTable(cat) {
+      const data = getData(cat);
+      const table = document.getElementById(`${cat}-table`);
+      table.innerHTML = '';
+      data.forEach((product, index) => {
+        const row = document.createElement('tr');
+        row.className = "border-b";
+        row.innerHTML = `
+          <td class="p-2 border">${product.name}</td>
+          <td class="p-2 border"><input type="number" value="${product.quantity}" onchange="updateQuantity('${cat}', ${index}, this.value)" class="border p-1 rounded w-full"></td>
+          <td class="p-2 border"><button onclick="removeProduct('${cat}', ${index})" class="text-red-500">Видалити</button></td>
+        `;
+        table.appendChild(row);
+      });
+    }
+
+    function addProduct(event, cat) {
+      event.preventDefault();
+      const name = document.getElementById(`${cat}-name`).value.trim();
+      const quantity = parseInt(document.getElementById(`${cat}-quantity`).value);
+      if (name && !isNaN(quantity)) {
+        const data = getData(cat);
+        data.push({ name, quantity });
+        saveData(cat, data);
+        renderTable(cat);
+        event.target.reset();
+      }
+    }
+
+    function updateQuantity(cat, index, newQuantity) {
+      const data = getData(cat);
+      data[index].quantity = parseInt(newQuantity);
+      saveData(cat, data);
+    }
+
+    function removeProduct(cat, index) {
+      const data = getData(cat);
+      data.splice(index, 1);
+      saveData(cat, data);
+      renderTable(cat);
+    }
+
+    // Відкрити перший таб за замовчуванням
+    document.querySelector('[data-tab="nonalcohol"]').click();
+  </script>
+</body>
+</html>
