@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="sk">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -28,10 +28,7 @@
   <!-- Main content -->
   <div class="flex-1 p-6">
     <!-- Hamburger button -->
-    <button id="menu-btn" class="md:hidden mb-4 bg-gray-200 px-4 py-2 rounded">Menu</button>
-
-    
-    
+    <button id="menu-btn" class="md:hidden mb-4 bg-gray-200 px-4 py-2 rounded">Меню</button>
 
     <h1 class="text-2xl font-bold mb-4">Kontrola zvyškov</h1>
 
@@ -49,41 +46,33 @@
       document.getElementById('sidebar').classList.toggle('-translate-x-full');
     });
 
-    document.getElementById('back-btn').addEventListener('click', () => {
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-      document.getElementById('back-btn').classList.add('hidden');
-      document.querySelector('h1').textContent = 'Kontrola zvyškov';
-    });
+    	document.querySelectorAll('.sidebar-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    document.getElementById(btn.dataset.tab).classList.remove('hidden');
 
-    document.querySelectorAll('.sidebar-tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-        const tab = document.getElementById(btn.dataset.tab);
-        tab.classList.remove('hidden');
-
-        // Показати кнопку "Назад" на мобільному
-        if (window.innerWidth < 768) {
-          document.getElementById('back-btn').classList.remove('hidden');
-          document.getElementById('sidebar').classList.add('-translate-x-full');
-          document.querySelector('h1').textContent = btn.textContent.trim();
-        }
-      });
-    });
+    // Закрити меню на мобільному
+    if (window.innerWidth < 768) {
+      document.getElementById('sidebar').classList.add('-translate-x-full');
+    }
+  });
+});
+ 
 
     // Ініціалізація розділів
     categories.forEach(cat => {
       const container = document.getElementById(cat);
       container.innerHTML = `
         <form onsubmit="addProduct(event, '${cat}')" class="space-y-2">
-          <input type="text" id="${cat}-name" placeholder="Назва продукту" required class="border p-2 w-full rounded">
-          <input type="number" id="${cat}-quantity" placeholder="Кількість" required class="border p-2 w-full rounded">
-          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Додати</button>
+          <input type="text" id="${cat}-name" placeholder="Meno" required class="border p-2 w-full rounded">
+          <input type="number" id="${cat}-quantity" placeholder="Zvyšok" required class="border p-2 w-full rounded">
+          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Pridat</button>
         </form>
         <table class="w-full mt-4 table-auto border border-gray-300">
           <thead>
             <tr class="bg-gray-200">
               <th class="p-2 border">Meno</th>
-              <th class="p-2 border">Počet</th>
+              <th class="p-2 border">Zvyšok</th>
               <th class="p-2 border">Zmenit</th>
             </tr>
           </thead>
