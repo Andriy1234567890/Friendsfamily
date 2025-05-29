@@ -1,29 +1,26 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="sk">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Контрольваіашків бару</title>
+  <title>Kontrola zvyškov</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex">
   <!-- Sidebar -->
   <div id="sidebar" class="bg-white w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 shadow-md">
     <nav>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="alcohol">
-        <span>🍹</span><span>Алкапі</span>
+        <span>🍹</span><span>Alko</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="nonalcohol">
-        <span>🧃</span><span>Безалкогольывываывані</span>
+        <span>🧃</span><span>Nealko</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="stock">
-        <span>🧑‍🌾</span><span>Склад</span>
+        <span>🧑‍🌾</span><span>Sklad</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="purchase">
-        <span>🛒</span><span>Закупка</span>
+        <span>🛒</span><span>Nakup</span>
       </a>
     </nav>
   </div>
@@ -33,7 +30,7 @@
     <!-- Hamburger button -->
     <button id="menu-btn" class="md:hidden mb-4 bg-gray-200 px-4 py-2 rounded">Меню</button>
 
-    <h1 class="text-2xl font-bold mb-4">Контроль залишків</h1>
+    <h1 class="text-2xl font-bold mb-4">Kontrola zvyškov</h1>
 
     <!-- Tab contents -->
     <div id="nonalcohol" class="tab-content hidden"></div>
@@ -43,53 +40,40 @@
   </div>
 
   <script>
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyDaE-NfvmNxTRPOkLbbUPKe589HTcK1t4U",
-  authDomain: "friendfamily-f8be7.firebaseapp.com",
-  projectId: "friendfamily-f8be7",
-  storageBucket: "friendfamily-f8be7.firebasestorage.app",
-  messagingSenderId: "73705575097",
-  appId: "1:73705575097:web:e7343ffa3cc57510d74168",
-  measurementId: "G-714EPZNJRJ"
-};
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
     const categories = ['nonalcohol', 'alcohol', 'stock', 'purchase'];
 
     document.getElementById('menu-btn').addEventListener('click', () => {
       document.getElementById('sidebar').classList.toggle('-translate-x-full');
     });
 
-    document.querySelectorAll('.sidebar-tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-        const tab = document.getElementById(btn.dataset.tab);
-        tab.classList.remove('hidden');
+    	document.querySelectorAll('.sidebar-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    document.getElementById(btn.dataset.tab).classList.remove('hidden');
 
-        if (window.innerWidth < 768) {
-          document.getElementById('sidebar').classList.add('-translate-x-full');
-          document.querySelector('h1').textContent = btn.textContent.trim();
-        }
-      });
-    });
+    // Закрити меню на мобільному
+    if (window.innerWidth < 768) {
+      document.getElementById('sidebar').classList.add('-translate-x-full');
+    }
+  });
+});
+ 
 
+    // Ініціалізація розділів
     categories.forEach(cat => {
       const container = document.getElementById(cat);
       container.innerHTML = `
         <form onsubmit="addProduct(event, '${cat}')" class="space-y-2">
-          <input type="text" id="${cat}-name" placeholder="Назва продукту" required class="border p-2 w-full rounded">
-          <input type="number" id="${cat}-quantity" placeholder="Кількість" required class="border p-2 w-full rounded">
-          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Додати</button>
+          <input type="text" id="${cat}-name" placeholder="Meno" required class="border p-2 w-full rounded">
+          <input type="number" id="${cat}-quantity" placeholder="Zvyšok" required class="border p-2 w-full rounded">
+          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Pridat</button>
         </form>
         <table class="w-full mt-4 table-auto border border-gray-300">
           <thead>
             <tr class="bg-gray-200">
-              <th class="p-2 border">Назва</th>
-              <th class="p-2 border">Кількість</th>
-              <th class="p-2 border">Дії</th>
+              <th class="p-2 border">Meno</th>
+              <th class="p-2 border">Zvyšok</th>
+              <th class="p-2 border">Zmenit</th>
             </tr>
           </thead>
           <tbody id="${cat}-table"></tbody>
@@ -98,91 +82,57 @@ const firebaseConfig = {
       renderTable(cat);
     });
 
-    async function getData(cat) {
-      const snapshot = await db.collection(cat).get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    function getData(cat) {
+      return JSON.parse(localStorage.getItem(cat)) || [];
     }
 
-    async function saveData(cat, data) {
-      const ref = db.collection(cat);
-      await Promise.all(data.map(item => ref.doc(item.name).set(item)));
+    function saveData(cat, data) {
+      localStorage.setItem(cat, JSON.stringify(data));
     }
 
-    async function renderTable(cat) {
-      const data = await getData(cat);
+    function renderTable(cat) {
+      const data = getData(cat);
       const table = document.getElementById(`${cat}-table`);
       table.innerHTML = '';
-      const lowStock = [];
-
       data.forEach((product, index) => {
         const row = document.createElement('tr');
         row.className = "border-b";
         row.innerHTML = `
           <td class="p-2 border">${product.name}</td>
-          <td class="p-2 border"><input type="number" value="${product.quantity}" onchange="updateQuantity('${cat}', '${product.name}', this.value)" class="border p-1 rounded w-full"></td>
-          <td class="p-2 border"><button onclick="removeProduct('${cat}', '${product.name}')" class="text-red-500">Видалити</button></td>
+          <td class="p-2 border"><input type="number" value="${product.quantity}" onchange="updateQuantity('${cat}', ${index}, this.value)" class="border p-1 rounded w-full"></td>
+          <td class="p-2 border"><button onclick="removeProduct('${cat}', ${index})" class="text-red-500">Видалити</button></td>
         `;
         table.appendChild(row);
-
-        if ((cat === 'alcohol' || cat === 'nonalcohol') && product.quantity < 5) {
-          lowStock.push(product);
-        } else if (cat === 'stock' && product.quantity < 2) {
-          lowStock.push(product);
-        }
       });
+    }
 
-      if (lowStock.length > 0 && cat !== 'purchase') {
-        const purchaseRef = db.collection('purchase');
-        const purchaseSnapshot = await purchaseRef.get();
-        const purchaseData = purchaseSnapshot.docs.map(doc => doc.data());
-
-        for (const p of lowStock) {
-          if (!purchaseData.find(item => item.name === p.name)) {
-            await purchaseRef.doc(p.name).set({ name: p.name, quantity: 1 });
-          }
-        }
-        renderTable('purchase');
+    function addProduct(event, cat) {
+      event.preventDefault();
+      const name = document.getElementById(`${cat}-name`).value.trim();
+      const quantity = parseInt(document.getElementById(`${cat}-quantity`).value);
+      if (name && !isNaN(quantity)) {
+        const data = getData(cat);
+        data.push({ name, quantity });
+        saveData(cat, data);
+        renderTable(cat);
+        event.target.reset();
       }
     }
 
-    window.addProduct = async function (event, cat) {
-  event.preventDefault();
+    function updateQuantity(cat, index, newQuantity) {
+      const data = getData(cat);
+      data[index].quantity = parseInt(newQuantity);
+      saveData(cat, data);
+    }
 
-  const form = event.target.closest("form");
-  const nameInput = form.querySelector(`#${cat}-name`);
-  const quantityInput = form.querySelector(`#${cat}-quantity`);
-
-  const name = nameInput.value.trim();
-  const quantity = parseInt(quantityInput.value);
-
-  if (!name || isNaN(quantity)) {
-    alert("Будь ласка, введіть назву та кількість.");
-    return;
-  }
-
-  try {
-    await db.collection(cat).doc(name).set({ name, quantity });
-    nameInput.value = '';
-    quantityInput.value = '';
-    await renderTable(cat);
-  } catch (err) {
-    console.error("Firestore помилка:", err);
-    alert("Помилка при збереженні до Firestore.");
-  }
-};
-
-
-
-    window.updateQuantity = async function (cat, name, newQuantity) {
-      await db.collection(cat).doc(name).update({ quantity: parseInt(newQuantity) });
+    function removeProduct(cat, index) {
+      const data = getData(cat);
+      data.splice(index, 1);
+      saveData(cat, data);
       renderTable(cat);
     }
 
-    window.removeProduct = async function (cat, name) {
-      await db.collection(cat).doc(name).delete();
-      renderTable(cat);
-    }
-
+    // Відкрити перший таб за замовчуванням
     document.querySelector('[data-tab="nonalcohol"]').click();
   </script>
 </body>
