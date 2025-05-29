@@ -100,7 +100,46 @@
           `;
           tbody.appendChild(row);
         });
+
+        // Перевірка кількості для автоматичного переходу
+        if (tabName === 'alcohol' || tabName === 'nonalcohol') {
+          const minQuantity = Math.min(...data.map(i => i.quantity));
+          if (minQuantity < 5) {
+            switchToPurchaseTab();
+          }
+        }
+        if (tabName === 'stock') {
+          const minQuantity = Math.min(...data.map(i => i.quantity));
+          if (minQuantity < 2) {
+            switchToPurchaseTab();
+          }
+        }
       }
+    }
+
+    function switchToPurchaseTab() {
+      // Якщо вже на вкладці purchase - не робимо нічого
+      if (!document.getElementById('purchase').classList.contains('hidden')) {
+        return;
+      }
+
+      // Сховати всі вкладки
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+      // Показати purchase
+      document.getElementById('purchase').classList.remove('hidden');
+      // Змінити заголовок
+      document.querySelector('h1').textContent = '🛒 Nakup';
+
+      // Показати purchase як активний в меню
+      document.querySelectorAll('.sidebar-tab').forEach(btn => {
+        btn.classList.remove('bg-gray-300');
+        if (btn.dataset.tab === 'purchase') {
+          btn.classList.add('bg-gray-300');
+        }
+      });
+
+      // Завантажити дані purchase
+      renderTable('purchase');
     }
 
     window.addItem = async function (event, tabName) {
