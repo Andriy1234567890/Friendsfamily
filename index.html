@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kontrola zvyškov</title>
+  <title>Контроль залишків бару</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
@@ -14,16 +14,16 @@
   <div id="sidebar" class="bg-white w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 shadow-md">
     <nav>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="alcohol">
-        <span>🍹</span><span>Alko</span>
+        <span>🍹</span><span>Алкогольні</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="nonalcohol">
-        <span>🧃</span><span>Nealko</span>
+        <span>🧃</span><span>Безалкогольні</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="stock">
-        <span>🧑‍🌾</span><span>Sklad</span>
+        <span>🧑‍🌾</span><span>Склад</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="purchase">
-        <span>🛒</span><span>Nakup</span>
+        <span>🛒</span><span>Закупка</span>
       </a>
     </nav>
   </div>
@@ -31,9 +31,9 @@
   <!-- Main content -->
   <div class="flex-1 p-6">
     <!-- Hamburger button -->
-    <button id="menu-btn" class="md:hidden mb-4 bg-gray-200 px-4 py-2 rounded">Menu</button>
+    <button id="menu-btn" class="md:hidden mb-4 bg-gray-200 px-4 py-2 rounded">Меню</button>
 
-    <h1 class="text-2xl font-bold mb-4">Kontrola zvyškov</h1>
+    <h1 class="text-2xl font-bold mb-4">Контроль залишків</h1>
 
     <!-- Tab contents -->
     <div id="nonalcohol" class="tab-content hidden"></div>
@@ -43,7 +43,6 @@
   </div>
 
   <script>
-    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDaE-NfvmNxTRPOkLbbUPKe589HTcK1t4U",
       authDomain: "friendfamily-f8be7.firebaseapp.com",
@@ -80,16 +79,16 @@
       const container = document.getElementById(cat);
       container.innerHTML = `
         <form onsubmit="addProduct(event, '${cat}')" class="space-y-2">
-          <input type="text" id="${cat}-name" placeholder="Meno" required class="border p-2 w-full rounded">
-          <input type="number" id="${cat}-quantity" placeholder="Zvyšok" required class="border p-2 w-full rounded">
-          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Pridat</button>
+          <input type="text" id="${cat}-name" placeholder="Назва продукту" required class="border p-2 w-full rounded">
+          <input type="number" id="${cat}-quantity" placeholder="Кількість" required class="border p-2 w-full rounded">
+          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Додати</button>
         </form>
         <table class="w-full mt-4 table-auto border border-gray-300">
           <thead>
             <tr class="bg-gray-200">
-              <th class="p-2 border">Meno</th>
-              <th class="p-2 border">Zvyšok</th>
-              <th class="p-2 border">Zmenit</th>
+              <th class="p-2 border">Назва</th>
+              <th class="p-2 border">Кількість</th>
+              <th class="p-2 border">Дії</th>
             </tr>
           </thead>
           <tbody id="${cat}-table"></tbody>
@@ -120,7 +119,7 @@
         row.innerHTML = `
           <td class="p-2 border">${product.name}</td>
           <td class="p-2 border"><input type="number" value="${product.quantity}" onchange="updateQuantity('${cat}', '${product.name}', this.value)" class="border p-1 rounded w-full"></td>
-          <td class="p-2 border"><button onclick="removeProduct('${cat}', '${product.name}')" class="text-red-500">Delate</button></td>
+          <td class="p-2 border"><button onclick="removeProduct('${cat}', '${product.name}')" class="text-red-500">Видалити</button></td>
         `;
         table.appendChild(row);
 
@@ -136,36 +135,35 @@
         const purchaseSnapshot = await purchaseRef.get();
         const purchaseData = purchaseSnapshot.docs.map(doc => doc.data());
 
-        lowStock.forEach(async p => {
+        for (const p of lowStock) {
           if (!purchaseData.find(item => item.name === p.name)) {
             await purchaseRef.doc(p.name).set({ name: p.name, quantity: 1 });
           }
-        });
+        }
         renderTable('purchase');
       }
     }
 
     window.addProduct = async function (event, cat) {
-  event.preventDefault();
-  const name = document.getElementById(`${cat}-name`).value.trim();
-  const quantity = parseInt(document.getElementById(`${cat}-quantity`).value);
-  if (name && !isNaN(quantity)) {
-    await db.collection(cat).doc(name).set({ name, quantity });
-    renderTable(cat);
-    event.target.reset();
-  }
-}
+      event.preventDefault();
+      const name = document.getElementById(`${cat}-name`).value.trim();
+      const quantity = parseInt(document.getElementById(`${cat}-quantity`).value);
+      if (name && !isNaN(quantity)) {
+        await db.collection(cat).doc(name).set({ name, quantity });
+        renderTable(cat);
+        event.target.reset();
+      }
+    }
 
-window.updateQuantity = async function (cat, name, newQuantity) {
-  await db.collection(cat).doc(name).update({ quantity: parseInt(newQuantity) });
-  renderTable(cat);
-}
+    window.updateQuantity = async function (cat, name, newQuantity) {
+      await db.collection(cat).doc(name).update({ quantity: parseInt(newQuantity) });
+      renderTable(cat);
+    }
 
-window.removeProduct = async function (cat, name) {
-  await db.collection(cat).doc(name).delete();
-  renderTable(cat);
-}
-
+    window.removeProduct = async function (cat, name) {
+      await db.collection(cat).doc(name).delete();
+      renderTable(cat);
+    }
 
     document.querySelector('[data-tab="nonalcohol"]').click();
   </script>
