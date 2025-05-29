@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Контроль залишків бару</title>
+  <title>Контрольваіашків бару</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
@@ -145,15 +145,22 @@
     }
 
     window.addProduct = async function (event, cat) {
-      event.preventDefault();
-      const name = document.getElementById(`${cat}-name`).value.trim();
-      const quantity = parseInt(document.getElementById(`${cat}-quantity`).value);
-      if (name && !isNaN(quantity)) {
-        await db.collection(cat).doc(name).set({ name, quantity });
-        renderTable(cat);
-        event.target.reset();
-      }
-    }
+  event.preventDefault();
+  const form = event.target;
+  const nameInput = form.querySelector(`#${cat}-name`);
+  const quantityInput = form.querySelector(`#${cat}-quantity`);
+  
+  const name = nameInput.value.trim();
+  const quantity = parseInt(quantityInput.value);
+
+  if (name && !isNaN(quantity)) {
+    await db.collection(cat).doc(name).set({ name, quantity });
+    await renderTable(cat);
+    nameInput.value = '';
+    quantityInput.value = '';
+  }
+}
+
 
     window.updateQuantity = async function (cat, name, newQuantity) {
       await db.collection(cat).doc(name).update({ quantity: parseInt(newQuantity) });
