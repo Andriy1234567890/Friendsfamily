@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Контроль залишків бару</title>
+  <title>Kontrola zvyškov</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex">
@@ -11,16 +11,16 @@
   <div id="sidebar" class="bg-white w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 shadow-md">
     <nav>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="alcohol">
-        <span>🍹</span><span>Алкогольні</span>
+        <span>🍹</span><span>Alko</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="nonalcohol">
-        <span>🧃</span><span>Безалкогольні</span>
+        <span>🧃</span><span>Nealko</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="stock">
-        <span>🧑‍🌾</span><span>Склад</span>
+        <span>🧑‍🌾</span><span>Sklad</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="purchase">
-        <span>🛒</span><span>Закупка</span>
+        <span>🛒</span><span>Nakup</span>
       </a>
     </nav>
   </div>
@@ -28,12 +28,12 @@
   <!-- Main content -->
   <div class="flex-1 p-6">
     <!-- Hamburger button -->
-    <button id="menu-btn" class="md:hidden mb-4 bg-gray-200 px-4 py-2 rounded">Меню</button>
+    <button id="menu-btn" class="md:hidden mb-4 bg-gray-200 px-4 py-2 rounded">Menu</button>
 
-    <!-- Back button -->
-    <button id="back-btn" class="hidden md:hidden mb-4 bg-gray-300 px-4 py-2 rounded">Назад</button>
+    
+    
 
-    <h1 class="text-2xl font-bold mb-4">Контроль залишків</h1>
+    <h1 class="text-2xl font-bold mb-4">Kontrola zvyškov</h1>
 
     <!-- Tab contents -->
     <div id="nonalcohol" class="tab-content hidden"></div>
@@ -52,7 +52,7 @@
     document.getElementById('back-btn').addEventListener('click', () => {
       document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
       document.getElementById('back-btn').classList.add('hidden');
-      document.querySelector('h1').textContent = 'Контроль залишків';
+      document.querySelector('h1').textContent = 'Kontrola zvyškov';
     });
 
     document.querySelectorAll('.sidebar-tab').forEach(btn => {
@@ -82,9 +82,9 @@
         <table class="w-full mt-4 table-auto border border-gray-300">
           <thead>
             <tr class="bg-gray-200">
-              <th class="p-2 border">Назва</th>
-              <th class="p-2 border">Кількість</th>
-              <th class="p-2 border">Дії</th>
+              <th class="p-2 border">Meno</th>
+              <th class="p-2 border">Počet</th>
+              <th class="p-2 border">Zmenit</th>
             </tr>
           </thead>
           <tbody id="${cat}-table"></tbody>
