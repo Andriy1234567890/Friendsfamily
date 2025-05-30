@@ -15,7 +15,7 @@
         <span>🍹</span><span>Alko</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="nonalcohol">
-        <span>🧃</span><span>Nealko</span>
+        <span>🦃</span><span>Nealko</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="stock">
         <span>🧑‍🌾</span><span>Sklad</span>
@@ -64,8 +64,11 @@
       });
     });
 
+    let currentSort = { key: 'name', asc: true };
+
     async function renderTable(tabName) {
-      const { data, error } = await client.from(tabName).select('*');
+      let { data, error } = await client.from(tabName).select('*');
+
       const container = document.getElementById(tabName);
       container.innerHTML = `
         <form id="form-${tabName}" class="space-y-2">
@@ -73,7 +76,11 @@
           <input type="text" id="${tabName}-quantity" placeholder="Zvyšok" required class="border p-2 w-full rounded">
           <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Pridat</button>
         </form>
-        <table class="w-full mt-4 table-auto border border-gray-300">
+        <div class="flex gap-4 mt-4">
+          <button onclick="sortBy('${tabName}', 'name')" class="bg-gray-300 px-3 py-1 rounded">Сортувати за назвою</button>
+          <button onclick="sortBy('${tabName}', 'quantity')" class="bg-gray-300 px-3 py-1 rounded">Сортувати за кількістю</button>
+        </div>
+        <table class="w-full mt-2 table-auto border border-gray-300">
           <thead>
             <tr class="bg-gray-200">
               <th class="p-2 border">Meno</th>
@@ -90,7 +97,7 @@
         e.preventDefault();
         const name = document.getElementById(`${tabName}-name`).value.trim();
         const quantity = document.getElementById(`${tabName}-quantity`).value.trim();
-        if (name && !isNaN(quantity)) {
+        if (name && quantity) {
           await client.from(tabName).insert([{ name, quantity }]);
           renderTable(tabName);
         }
@@ -100,6 +107,14 @@
       tbody.innerHTML = '';
 
       if (data) {
+        data.sort((a, b) => {
+          const valA = a[currentSort.key];
+          const valB = b[currentSort.key];
+          return currentSort.asc
+            ? valA.toString().localeCompare(valB.toString(), undefined, { numeric: true })
+            : valB.toString().localeCompare(valA.toString(), undefined, { numeric: true });
+        });
+
         for (const item of data) {
           const isLow = (tabName === 'stock' && item.quantity <= 2) ||
                         ((tabName === 'alcohol' || tabName === 'nonalcohol') && item.quantity <= 5);
@@ -115,25 +130,33 @@
           row.innerHTML = `
             <td class="p-2 border">${item.name}</td>
             <td class="p-2 border">
-              <input type="number" value="${item.quantity}" class="border p-1 rounded w-full ${quantityClass}"
+              <input type="text" value="${item.quantity}" class="border p-1 rounded w-full ${quantityClass}"
                 onchange="updateQuantity('${tabName}', ${item.id}, this.value)">
             </td>
             <td class="p-2 border">
               <button onclick="deleteItem('${tabName}', ${item.id})" class="text-red-500">Видалити</button>
             </td>
-            ${
-              tabName === 'purchase'
-                ? `<td class="p-2 border">
-                    <button onclick="markAsPurchased('${item.name}', ${item.quantity})"
-                      class="bg-green-500 text-white px-2 py-1 rounded">Закуплено</button>
-                   </td>`
-                : ''
-            }
+            ${tabName === 'purchase'
+              ? `<td class="p-2 border">
+                  <button onclick="markAsPurchased('${item.name}', ${item.quantity})"
+                    class="bg-green-500 text-white px-2 py-1 rounded">Закуплено</button>
+                </td>`
+              : ''}
           `;
 
           tbody.appendChild(row);
         }
       }
+    }
+
+    function sortBy(tab, key) {
+      if (currentSort.key === key) {
+        currentSort.asc = !currentSort.asc;
+      } else {
+        currentSort.key = key;
+        currentSort.asc = true;
+      }
+      renderTable(tab);
     }
 
     async function maybeAddToPurchase(name, quantity) {
@@ -166,7 +189,6 @@
         }
       }
 
-      // Якщо не знайдено — додаємо в stock
       await client.from('stock').insert([{ name, quantity }]);
       renderTable('purchase');
     }
