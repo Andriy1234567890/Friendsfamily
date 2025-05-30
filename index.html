@@ -69,16 +69,16 @@
       const container = document.getElementById(tabName);
       container.innerHTML = `
         <form id="form-${tabName}" class="space-y-2">
-          <input type="text" id="${tabName}-name" placeholder="Назва" required class="border p-2 w-full rounded">
-          <input type="number" id="${tabName}-quantity" placeholder="Кількість" required class="border p-2 w-full rounded">
-          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Додати</button>
+          <input type="text" id="${tabName}-name" placeholder="Meno" required class="border p-2 w-full rounded">
+          <input type="text" id="${tabName}-quantity" placeholder="Zvyšok" required class="border p-2 w-full rounded">
+          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Pridat</button>
         </form>
         <table class="w-full mt-4 table-auto border border-gray-300">
           <thead>
             <tr class="bg-gray-200">
-              <th class="p-2 border">Назва</th>
-              <th class="p-2 border">Кількість</th>
-              <th class="p-2 border">Змінити</th>
+              <th class="p-2 border">Meno</th>
+              <th class="p-2 border">Zvyšok</th>
+              <th class="p-2 border">Zmenit</th>
               ${tabName === 'purchase' ? '<th class="p-2 border">Дія</th>' : ''}
             </tr>
           </thead>
