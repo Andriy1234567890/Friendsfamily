@@ -89,7 +89,7 @@
       document.getElementById(`form-${tabName}`).addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById(`${tabName}-name`).value.trim();
-        const quantity = parseInt(document.getElementById(`${tabName}-quantity`).value);
+        const quantity = document.getElementById(`${tabName}-quantity`).value.trim();
         if (name && !isNaN(quantity)) {
           await client.from(tabName).insert([{ name, quantity }]);
           renderTable(tabName);
@@ -144,7 +144,7 @@
     }
 
     window.updateQuantity = async function (tabName, id, quantity) {
-      await client.from(tabName).update({ quantity: parseInt(quantity) }).eq('id', id);
+      await client.from(tabName).update({ quantity }).eq('id', id);
       renderTable(tabName);
     }
 
