@@ -87,7 +87,7 @@
         <input type="text" id="${tabName}-name" placeholder="Meno" required class="border p-2 w-full rounded">
         ${tabName === 'capovane' 
           ? `<input type="text" id="${tabName}-quantity" placeholder="Zvyšok (букви або цифри)" required class="border p-2 w-full rounded">`
-          : `<input type="number" step="0.1" min="0" id="${tabName}-quantity" placeholder="Zvyšok (число)" required class="border p-2 w-full rounded" >`
+          : `<input type="number" step="1" min="0" id="${tabName}-quantity" placeholder="Zvyšok (число)" required class="border p-2 w-full rounded" >`
         }
         ${tabName === 'purchase' ? 
           `<textarea id="${tabName}-comment" placeholder="Коментар" class="border p-2 w-full rounded mb-2"></textarea>` 
