@@ -20,14 +20,14 @@
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="stock">
         <span>🧑‍🌾</span><span>Sklad</span>
       </a>
-      <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="purchase">
-        <span>🛒</span><span>Nakup</span>
-      </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="monin">
         <span>🍯</span><span>Monin</span>
       </a>
       <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="capovane">
         <span>🍺</span><span>Čapované</span>
+      </a>
+      <a href="#" class="flex items-center space-x-2 px-4 py-2 hover:bg-gray-200 rounded sidebar-tab" data-tab="purchase">
+        <span>🛒</span><span>Nakup</span>
       </a>
     </nav>
   </div>
@@ -40,224 +40,179 @@
     <div id="nonalcohol" class="tab-content hidden"></div>
     <div id="alcohol" class="tab-content hidden"></div>
     <div id="stock" class="tab-content hidden"></div>
-    <div id="purchase" class="tab-content hidden"></div>
     <div id="monin" class="tab-content hidden"></div>
     <div id="capovane" class="tab-content hidden"></div>
+    <div id="purchase" class="tab-content hidden"></div>
   </div>
 
-<script>
-  const client = window.supabase.createClient(
-    "https://wmjvkmdignmlnbphqxxd.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtanZrbWRpZ25tbG5icGhxeHhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1MTU0MzMsImV4cCI6MjA2NDA5MTQzM30.EnEcHJaVyOj6IPmBTR_L2U5BazeaWK3kLnE9aycVZC8"
-  );
+  <script>
+    const client = window.supabase.createClient(
+      "https://wmjvkmdignmlnbphqxxd.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtanZrbWRpZ25tbG5icGhxeHhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1MTU0MzMsImV4cCI6MjA2NDA5MTQzM30.EnEcHJaVyOj6IPmBTR_L2U5BazeaWK3kLnE9aycVZC8"
+    );
 
-  // Всі вкладки
-  const categories = ['nonalcohol', 'alcohol', 'stock', 'purchase', 'monin', 'capovane'];
+    const categories = ['nonalcohol', 'alcohol', 'stock', 'monin', 'capovane', 'purchase'];
 
-  document.getElementById('menu-btn').addEventListener('click', () => {
-    document.getElementById('sidebar').classList.toggle('-translate-x-full');
-  });
-
-  document.querySelectorAll('.sidebar-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-      const tab = document.getElementById(btn.dataset.tab);
-      tab.classList.remove('hidden');
-
-      if (window.innerWidth < 768) {
-        document.getElementById('sidebar').classList.add('-translate-x-full');
-        document.querySelector('h1').textContent = btn.textContent.trim();
-      }
-
-      renderTable(btn.dataset.tab);
+    document.getElementById('menu-btn').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('-translate-x-full');
     });
-  });
 
-  let currentSort = { key: 'name', asc: true };
+    document.querySelectorAll('.sidebar-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        const tab = document.getElementById(btn.dataset.tab);
+        tab.classList.remove('hidden');
 
-  // Для monin та capovane quantity - теж числове поле, так само як alcohol, stock, nonalcohol
-  // purchase - залишаємо текстове поле для quantity (можна допрацьовувати)
+        if (window.innerWidth < 768) {
+          document.getElementById('sidebar').classList.add('-translate-x-full');
+          document.querySelector('h1').textContent = btn.textContent.trim();
+        }
 
-  async function renderTable(tabName) {
-    const { data, error } = await client.from(tabName).select('*');
-    if(error){
-      console.error(error);
-      return;
+        renderTable(btn.dataset.tab);
+      });
+    });
+
+    let currentSort = { key: 'name', asc: true };
+
+    async function renderTable(tabName) {
+      let { data, error } = await client.from(tabName).select('*');
+
+      const container = document.getElementById(tabName);
+      container.innerHTML = `
+        <form id="form-${tabName}" class="space-y-2">
+          <input type="text" id="${tabName}-name" placeholder="Meno" required class="border p-2 w-full rounded">
+          <input type="text" id="${tabName}-quantity" placeholder="Zvyšok" required class="border p-2 w-full rounded">
+          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Pridat</button>
+        </form>
+        <div class="flex gap-4 mt-4 flex-wrap">
+          <button onclick="sortBy('${tabName}', 'name')" class="bg-gray-300 px-3 py-1 rounded">Zoradiť podľa názvu</button>
+          <button onclick="sortBy('${tabName}', 'quantity')" class="bg-gray-300 px-3 py-1 rounded">Zoradiť podľa množstva</button>
+          ${tabName !== 'purchase' ? `<button onclick="sendLowToPurchase('${tabName}')" class="bg-yellow-500 text-white px-3 py-1 rounded">Відправити в накуп</button>` : ''}
+        </div>
+        <table class="w-full mt-2 table-auto border border-gray-300">
+          <thead>
+            <tr class="bg-gray-200">
+              <th class="p-2 border">Meno</th>
+              <th class="p-2 border">Zvyšok</th>
+              <th class="p-2 border">Zменити</th>
+              ${tabName === 'purchase' ? '<th class="p-2 border">Дія</th>' : ''}
+            </tr>
+          </thead>
+          <tbody id="${tabName}-table"></tbody>
+        </table>
+      `;
+
+      document.getElementById(`form-${tabName}`).addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById(`${tabName}-name`).value.trim();
+        const quantity = document.getElementById(`${tabName}-quantity`).value.trim();
+        if (name && quantity) {
+          await client.from(tabName).insert([{ name, quantity }]);
+          renderTable(tabName);
+        }
+      });
+
+      const tbody = document.getElementById(`${tabName}-table`);
+      tbody.innerHTML = '';
+
+      if (data) {
+        data.sort((a, b) => {
+          const valA = a[currentSort.key];
+          const valB = b[currentSort.key];
+          return currentSort.asc
+            ? valA.toString().localeCompare(valB.toString(), undefined, { numeric: true })
+            : valB.toString().localeCompare(valA.toString(), undefined, { numeric: true });
+        });
+
+        for (const item of data) {
+          const isLow = (tabName === 'stock' && item.quantity <= 2) ||
+                        ((tabName === 'alcohol' || tabName === 'nonalcohol') && item.quantity <= 5);
+
+          if (isLow && tabName !== 'purchase') {
+            await maybeAddToPurchase(item.name, item.quantity);
+          }
+
+          const quantityClass = isLow ? 'text-red-600 font-bold' : '';
+          const row = document.createElement('tr');
+          row.className = "border-b";
+
+          row.innerHTML = `
+            <td class="p-2 border">${item.name}</td>
+            <td class="p-2 border">
+              <input type="text" value="${item.quantity}" class="border p-1 rounded w-full ${quantityClass}"
+                onchange="updateQuantity('${tabName}', ${item.id}, this.value)">
+            </td>
+            <td class="p-2 border">
+              <button onclick="deleteItem('${tabName}', ${item.id})" class="text-red-500">Видалити</button>
+            </td>
+            ${tabName === 'purchase'
+              ? `<td class="p-2 border">
+                  <button onclick="markAsPurchased('${item.name}', ${item.quantity})"
+                    class="bg-green-500 text-white px-2 py-1 rounded">Закуплено</button>
+                </td>`
+              : ''}
+          `;
+
+          tbody.appendChild(row);
+        }
+      }
     }
 
-    const container = document.getElementById(tabName);
-    container.innerHTML = `
-      <form id="form-${tabName}" class="space-y-2 mb-4">
-        <input type="text" id="${tabName}-name" placeholder="Meno" required class="border p-2 w-full rounded">
-        ${tabName === 'capovane' 
-          ? `<input type="text" id="${tabName}-quantity" placeholder="Zvyšok (букви або цифри)" required class="border p-2 w-full rounded">`
-          : `<input type="number" step="0.1" min="0" id="${tabName}-quantity" placeholder="Zvyšok (число)" required class="border p-2 w-full rounded" >`
-        }
-        ${tabName === 'purchase' ? 
-          `<textarea id="${tabName}-comment" placeholder="Коментар" class="border p-2 w-full rounded mb-2"></textarea>` 
-          : ''
-        }
-        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Pridat</button>
-      </form>
-      <div class="flex gap-4 mb-2">
-        <button type="button" onclick="sortBy('${tabName}', 'name')" class="bg-gray-300 px-3 py-1 rounded">Zoradiť podľa názvu</button>
-        <button type="button" onclick="sortBy('${tabName}', 'quantity')" class="bg-gray-300 px-3 py-1 rounded">Zoradiť podľa množstva</button>
-      </div>
-      <table class="w-full table-auto border border-gray-300">
-        <thead>
-          <tr class="bg-gray-200">
-            <th class="p-2 border">Meno</th>
-            <th class="p-2 border">Zvyšok</th>
-            <th class="p-2 border">Zmenit</th>
-            ${tabName === 'purchase' ? '<th class="p-2 border">Коментар</th>' : ''}
-            ${tabName === 'purchase' ? '<th class="p-2 border">Дія</th>' : ''}
-          </tr>
-        </thead>
-        <tbody id="${tabName}-table"></tbody>
-      </table>
-    `;
+    async function sendLowToPurchase(tabName) {
+      let { data } = await client.from(tabName).select('*');
+      for (const item of data) {
+        const isLow = (tabName === 'stock' && item.quantity <= 2) ||
+                      ((tabName === 'alcohol' || tabName === 'nonalcohol') && item.quantity <= 5);
+        if (isLow) await maybeAddToPurchase(item.name, item.quantity);
+      }
+      alert("Низькі залишки відправлено в накуп.");
+    }
 
-    document.getElementById(`form-${tabName}`).addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const name = document.getElementById(`${tabName}-name`).value.trim();
-      const quantityInput = document.getElementById(`${tabName}-quantity`).value.trim();
-      let quantity = quantityInput;
+    function sortBy(tab, key) {
+      if (currentSort.key === key) {
+        currentSort.asc = !currentSort.asc;
+      } else {
+        currentSort.key = key;
+        currentSort.asc = true;
+      }
+      renderTable(tab);
+    }
 
-      if(tabName !== 'capovane' && tabName !== 'purchase'){
-        quantity = parseFloat(quantityInput);
-        if (isNaN(quantity) || quantity < 0) {
-          alert("Будь ласка, введіть правильне числове значення кількості.");
+    async function maybeAddToPurchase(name, quantity) {
+      const { data: exists } = await client.from('purchase').select('*').eq('name', name).maybeSingle();
+      if (!exists) {
+        await client.from('purchase').insert([{ name, quantity }]);
+      }
+    }
+
+    window.updateQuantity = async function (tabName, id, quantity) {
+      await client.from(tabName).update({ quantity }).eq('id', id);
+      renderTable(tabName);
+    }
+
+    window.deleteItem = async function (tabName, id) {
+      await client.from(tabName).delete().eq('id', id);
+      renderTable(tabName);
+    }
+
+    window.markAsPurchased = async function (name, quantity) {
+      await client.from('purchase').delete().eq('name', name);
+
+      const tabs = ['alcohol', 'nonalcohol', 'stock', 'monin', 'capovane'];
+      for (const tab of tabs) {
+        const { data: exists } = await client.from(tab).select('*').eq('name', name).maybeSingle();
+        if (exists) {
+          await client.from(tab).update({ quantity: exists.quantity + quantity }).eq('id', exists.id);
+          renderTable('purchase');
           return;
         }
       }
 
-      let comment = '';
-      if(tabName === 'purchase'){
-        comment = document.getElementById(`${tabName}-comment`).value.trim();
-      }
-
-      if (name && quantityInput) {
-        const insertData = tabName === 'purchase' ? { name, quantity: quantityInput, comment } : { name, quantity };
-        await client.from(tabName).insert([insertData]);
-        renderTable(tabName);
-      }
-    });
-
-    const tbody = document.getElementById(`${tabName}-table`);
-    tbody.innerHTML = '';
-
-    if (data) {
-      data.sort((a, b) => {
-        const valA = a[currentSort.key];
-        const valB = b[currentSort.key];
-        // Числове сортування для quantity там де потрібно
-        if(currentSort.key === 'quantity'){
-          return currentSort.asc
-            ? parseFloat(valA) - parseFloat(valB)
-            : parseFloat(valB) - parseFloat(valA);
-        }
-        // Локалізоване сортування для name
-        return currentSort.asc
-          ? valA.toString().localeCompare(valB.toString(), undefined, { numeric: true })
-          : valB.toString().localeCompare(valA.toString(), undefined, { numeric: true });
-      });
-
-      for (const item of data) {
-        const isLow = (tabName === 'stock' && item.quantity <= 2) ||
-                      ((tabName === 'alcohol' || tabName === 'nonalcohol') && item.quantity <= 5);
-
-        // Для моніна і чаповане не ставимо автоматичного додавання в накуп (поки)
-        const quantityClass = isLow && tabName !== 'purchase' ? 'text-red-600 font-bold' : '';
-
-        const row = document.createElement('tr');
-        row.className = "border-b";
-
-        let quantityInputHtml;
-        if(tabName === 'capovane'){
-          // Текстове поле для quantity
-          quantityInputHtml = `<input type="text" value="${item.quantity}" class="border p-1 rounded w-full ${quantityClass}" onchange="updateQuantity('${tabName}', ${item.id}, this.value)">`;
-        } else if(tabName === 'purchase'){
-          quantityInputHtml = `<input type="text" value="${item.quantity}" class="border p-1 rounded w-full" disabled>`;
-        } else {
-          // Числове поле зі стрілками
-          quantityInputHtml = `<input type="number" step="0.1" min="0" value="${item.quantity}" class="border p-1 rounded w-full ${quantityClass}" onchange="updateQuantity('${tabName}', ${item.id}, this.value)">`;
-        }
-
-        row.innerHTML = `
-          <td class="p-2 border">${item.name}</td>
-          <td class="p-2 border">${quantityInputHtml}</td>
-          <td class="p-2 border">
-            <button onclick="deleteItem('${tabName}', ${item.id})" class="text-red-500">Видалити</button>
-          </td>
-          ${tabName === 'purchase' 
-            ? `<td class="p-2 border">${item.comment ?? ''}</td>
-               <td class="p-2 border">
-                 <button onclick="markAsPurchased('${item.name}', '${item.quantity}')" class="bg-green-500 text-white px-2 py-1 rounded">Закуплено</button>
-               </td>`
-            : ''
-          }
-        `;
-
-        tbody.appendChild(row);
-      }
-    }
-  }
-
-  function sortBy(tab, key) {
-    if (currentSort.key === key) {
-      currentSort.asc = !currentSort.asc;
-    } else {
-      currentSort.key = key;
-      currentSort.asc = true;
-    }
-    renderTable(tab);
-  }
-
-  async function maybeAddToPurchase(name, quantity) {
-    // Залишив без змін, поки не використовується для монін/чаповане
-    const { data: exists } = await client.from('purchase').select('*').eq('name', name).maybeSingle();
-    if (!exists) {
-      await client.from('purchase').insert([{ name, quantity }]);
-    }
-  }
-
-  window.updateQuantity = async function (tabName, id, quantity) {
-    if(tabName !== 'capovane'){
-      quantity = parseFloat(quantity);
-      if(isNaN(quantity) || quantity < 0) {
-        alert("Введіть коректне число");
-        renderTable(tabName);
-        return;
-      }
-    }
-    await client.from(tabName).update({ quantity }).eq('id', id);
-    renderTable(tabName);
-  }
-
-  window.deleteItem = async function (tabName, id) {
-    await client.from(tabName).delete().eq('id', id);
-    renderTable(tabName);
-  }
-
-  window.markAsPurchased = async function (name, quantity) {
-    await client.from('purchase').delete().eq('name', name);
-
-    const tabs = ['alcohol', 'nonalcohol', 'stock'];
-    for (const tab of tabs) {
-      const { data: exists } = await client.from(tab).select('*').eq('name', name).maybeSingle();
-      if (exists) {
-        await client.from(tab).update({ quantity: exists.quantity + parseFloat(quantity) }).eq('id', exists.id);
-        renderTable('purchase');
-        return;
-      }
+      await client.from('stock').insert([{ name, quantity }]);
+      renderTable('purchase');
     }
 
-    await client.from('stock').insert([{ name, quantity }]);
-    renderTable('purchase');
-  }
-
-  // За замовчуванням показуємо nonalcohol
-  renderTable('nonalcohol');
-</script>
+    renderTable('nonalcohol');
+  </script>
 </body>
 </html>
