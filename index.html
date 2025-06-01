@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
@@ -74,6 +74,7 @@
         <form id="form-${tabName}" class="space-y-2">
           <input type="text" id="${tabName}-name" placeholder="Meno" required class="border p-2 w-full rounded">
           <input type="text" id="${tabName}-quantity" placeholder="Zvyšok" required class="border p-2 w-full rounded">
+          ${tabName === 'purchase' ? `<input type="text" id="${tabName}-comment" placeholder="Коментар" class="border p-2 w-full rounded">` : ''}
           <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Pridat</button>
         </form>
         <div class="flex gap-4 mt-4">
@@ -85,7 +86,8 @@
             <tr class="bg-gray-200">
               <th class="p-2 border">Meno</th>
               <th class="p-2 border">Zvyšok</th>
-              <th class="p-2 border">Zmenit</th>
+              ${tabName === 'purchase' ? '<th class="p-2 border">Коментар</th>' : ''}
+              <th class="p-2 border">Змінити</th>
               ${tabName === 'purchase' ? '<th class="p-2 border">Дія</th>' : ''}
             </tr>
           </thead>
@@ -98,7 +100,12 @@
         const name = document.getElementById(`${tabName}-name`).value.trim();
         const quantity = document.getElementById(`${tabName}-quantity`).value.trim();
         if (name && quantity) {
-          await client.from(tabName).insert([{ name, quantity }]);
+          if(tabName === 'purchase') {
+            const comment = document.getElementById(`${tabName}-comment`).value.trim();
+            await client.from(tabName).insert([{ name, quantity, comment }]);
+          } else {
+            await client.from(tabName).insert([{ name, quantity }]);
+          }
           renderTable(tabName);
         }
       });
@@ -133,6 +140,12 @@
               <input type="text" value="${item.quantity}" class="border p-1 rounded w-full ${quantityClass}"
                 onchange="updateQuantity('${tabName}', ${item.id}, this.value)">
             </td>
+            ${tabName === 'purchase' ? `
+            <td class="p-2 border">
+              <input type="text" value="${item.comment || ''}" class="border p-1 rounded w-full"
+                onchange="updateComment(${item.id}, this.value)">
+            </td>
+            ` : ''}
             <td class="p-2 border">
               <button onclick="deleteItem('${tabName}', ${item.id})" class="text-red-500">Видалити</button>
             </td>
@@ -169,6 +182,11 @@
     window.updateQuantity = async function (tabName, id, quantity) {
       await client.from(tabName).update({ quantity }).eq('id', id);
       renderTable(tabName);
+    }
+
+    window.updateComment = async function (id, comment) {
+      await client.from('purchase').update({ comment }).eq('id', id);
+      renderTable('purchase');
     }
 
     window.deleteItem = async function (tabName, id) {
