@@ -137,9 +137,10 @@
           row.innerHTML = `
             <td class="p-2 border">${item.name}</td>
             <td class="p-2 border">
-              <input type="text" value="${item.quantity}" class="border p-1 rounded w-full ${quantityClass}"
-                onchange="updateQuantity('${tabName}', ${item.id}, this.value)">
-            </td>
+  <input type="number" step="0.1" min="0" value="${item.quantity}" class="border p-1 rounded w-full ${quantityClass}"
+    onchange="updateQuantity('${tabName}', ${item.id}, this.value)">
+</td>
+
             ${tabName === 'purchase' ? `
             <td class="p-2 border">
               <input type="text" value="${item.comment || ''}" class="border p-1 rounded w-full"
