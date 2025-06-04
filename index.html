@@ -74,15 +74,9 @@
   });
 
   let currentSort = { key: 'name', asc: true };
-  let currentFilterFromTable = 'all';
 
   async function renderTable(tabName) {
-    // Для purchase враховуємо фільтр
-    let query = client.from(tabName).select('*');
-    if (tabName === 'purchase' && currentFilterFromTable !== 'all') {
-      query = query.eq('fromTable', currentFilterFromTable);
-    }
-    const { data, error } = await query;
+    const { data, error } = await client.from(tabName).select('*');
     if(error){
       console.error(error);
       return;
@@ -100,223 +94,213 @@
           `<textarea id="${tabName}-comment" placeholder="Коментар" class="border p-2 w-full rounded mb-2"></textarea>` 
           : ''
         }
-        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Pridať</button>
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Pridat</button>
       </form>
-      <table class="min-w-full bg-white rounded shadow">
+      <div class="flex gap-4 mb-2">
+        <button type="button" onclick="sortBy('${tabName}', 'name')" class="bg-gray-300 px-3 py-1 rounded">Zoradiť podľa názvu</button>
+        <button type="button" onclick="sortBy('${tabName}', 'quantity')" class="bg-gray-300 px-3 py-1 rounded">Zoradiť podľa množstva</button>
+      </div>
+      <table class="w-full table-auto border border-gray-300">
         <thead>
-          <tr>
-            <th class="p-2 cursor-pointer" data-sort="name">Meno</th>
-            <th class="p-2 cursor-pointer" data-sort="quantity">Zvyšok</th>
-            ${tabName === 'purchase' ? '<th class="p-2">Komentár</th>' : ''}
-            <th class="p-2">Akcie</th>
+          <tr class="bg-gray-200">
+            <th class="p-2 border cursor-pointer" onclick="sortBy('${tabName}', 'name')">Meno</th>
+            <th class="p-2 border cursor-pointer" onclick="sortBy('${tabName}', 'quantity')">Zvyšok</th>
+            <th class="p-2 border">Зменити</th>
+            ${tabName === 'purchase' ? '<th class="p-2 border">Коментар</th>' : ''}
+            ${tabName === 'purchase' ? '<th class="p-2 border">Дія</th>' : ''}
+            ${tabName !== 'purchase' ? '<th class="p-2 border">Додати в Nakup</th>' : ''}
           </tr>
         </thead>
-        <tbody>
-          ${data.map(row => `
-            <tr data-id="${row.id}">
-              <td contenteditable="true" class="p-2 name-cell">${row.name}</td>
-              <td contenteditable="true" class="p-2 quantity-cell">${row.quantity}</td>
-              ${tabName === 'purchase' ? `<td contenteditable="true" class="p-2 comment-cell">${row.comment || ''}</td>` : ''}
-              <td class="p-2 space-x-2">
-                ${tabName !== 'purchase' ? `<button class="add-to-purchase bg-green-500 text-white px-2 rounded">Nakup</button>` : ''}
-                <button class="delete-btn bg-red-500 text-white px-2 rounded">Vymazať</button>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
+        <tbody id="${tabName}-table"></tbody>
       </table>
-      ${tabName === 'purchase' ? `<select id="filter-fromTable" class="border p-2 rounded mt-2 mb-4">
-        <option value="all">Všetko</option>
-        ${categories.filter(c => c !== 'purchase').map(c => `<option value="${c}">${c}</option>`).join('')}
-      </select>` : ''}
     `;
 
-    // Обробка форми додавання
-    const form = document.getElementById(`form-${tabName}`);
-    form.onsubmit = async (e) => {
+    document.getElementById(`form-${tabName}`).addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById(`${tabName}-name`).value.trim();
-      const quantity = document.getElementById(`${tabName}-quantity`).value.trim();
-      if (tabName === 'purchase') {
-        const comment = document.getElementById(`${tabName}-comment`).value.trim();
-        await addRow(tabName, { name, quantity: parseFloat(quantity), comment, fromTable: 'purchase' });
-      } else {
-        await addRow(tabName, { name, quantity: tabName === 'capovane' ? quantity : parseFloat(quantity) });
-      }
-      form.reset();
-      renderTable(tabName);
-    };
+      const quantityInput = document.getElementById(`${tabName}-quantity`).value.trim();
+      let quantity = quantityInput;
 
-    // Обробка кліків на кнопки у таблиці
-    container.querySelectorAll('.delete-btn').forEach(btn => {
-      btn.onclick = async (e) => {
-        const id = e.target.closest('tr').dataset.id;
-        await deleteRow(tabName, id);
-        renderTable(tabName);
-      };
-    });
-
-    container.querySelectorAll('.add-to-purchase').forEach(btn => {
-      btn.onclick = async (e) => {
-        const tr = e.target.closest('tr');
-        const id = tr.dataset.id;
-        const name = tr.querySelector('.name-cell').textContent.trim();
-        const quantity = tr.querySelector('.quantity-cell').textContent.trim();
-        await addToPurchase(id, name, quantity, tabName);
-      };
-    });
-
-    // Обробка сортування
-    container.querySelectorAll('th[data-sort]').forEach(th => {
-      th.onclick = () => {
-        const key = th.dataset.sort;
-        if (currentSort.key === key) {
-          currentSort.asc = !currentSort.asc;
-        } else {
-          currentSort.key = key;
-          currentSort.asc = true;
+      if(tabName !== 'capovane' && tabName !== 'purchase'){
+        quantity = parseFloat(quantityInput);
+        if (isNaN(quantity) || quantity < 0) {
+          alert("Будь ласка, введіть правильне числове значення кількості.");
+          return;
         }
-        sortTable(tabName, key, currentSort.asc);
-      };
-    });
+      }
 
-    // Якщо це вкладка purchase — додаємо обробку фільтра
-    if (tabName === 'purchase') {
-      const filter = document.getElementById('filter-fromTable');
-      filter.value = currentFilterFromTable;
-      filter.onchange = () => {
-        currentFilterFromTable = filter.value;
-        renderTable('purchase');
-      };
-    }
+      let comment = '';
+      if(tabName === 'purchase'){
+        comment = document.getElementById(`${tabName}-comment`).value.trim();
+      }
 
-    // Обробка редагування (on blur)
-    container.querySelectorAll('tbody tr').forEach(tr => {
-      tr.querySelectorAll('[contenteditable="true"]').forEach(td => {
-        td.onblur = async () => {
-          const id = tr.dataset.id;
-          const updatedRow = {
-            name: tr.querySelector('.name-cell').textContent.trim(),
-            quantity: tr.querySelector('.quantity-cell').textContent.trim()
-          };
-          if (tabName === 'purchase') {
-            updatedRow.comment = tr.querySelector('.comment-cell').textContent.trim();
-          }
-          // Конвертуємо quantity, якщо це не capovane
-          if (tabName !== 'capovane') {
-            updatedRow.quantity = parseFloat(updatedRow.quantity);
-            if (isNaN(updatedRow.quantity)) {
-              alert('Неправильне числове значення кількості');
-              renderTable(tabName);
-              return;
-            }
-          }
-          await updateRow(tabName, id, updatedRow);
-          renderTable(tabName);
-        };
-      });
-    });
-  }
-
-  async function addRow(table, row) {
-    const { error } = await client.from(table).insert([row]);
-    if (error) {
-      alert('Помилка при додаванні: ' + error.message);
-      console.error(error);
-    }
-  }
-
-  async function deleteRow(table, id) {
-    const { error } = await client.from(table).delete().eq('id', id);
-    if (error) {
-      alert('Помилка при видаленні: ' + error.message);
-      console.error(error);
-    }
-  }
-
-  async function updateRow(table, id, updatedRow) {
-    const { error } = await client.from(table).update(updatedRow).eq('id', id);
-    if (error) {
-      alert('Помилка при оновленні: ' + error.message);
-      console.error(error);
-    }
-  }
-
-  // Виправлена функція додавання в purchase
-  async function addToPurchase(id, name, quantity, fromTable) {
-    const quantityNum = fromTable === 'capovane' ? quantity : (typeof quantity === 'number' ? quantity : parseFloat(quantity));
-    if (fromTable !== 'capovane' && isNaN(quantityNum)) {
-      alert('Неправильне числове значення кількості');
-      return;
-    }
-
-    const { data, error } = await client.from('purchase').insert([{ name, quantity: quantityNum, comment: '', fromTable }]);
-    if (error) {
-      alert('Помилка при додаванні в Nakup: ' + error.message);
-      console.error(error);
-      return;
-    }
-
-    await client.from(fromTable).delete().eq('id', id);
-    renderTable(fromTable);
-    renderTable('purchase');
-  }
-
-  // Сортування масиву і оновлення таблиці
-  async function sortTable(tabName, key, asc) {
-    let { data, error } = await client.from(tabName).select('*');
-    if (tabName === 'purchase' && currentFilterFromTable !== 'all') {
-      data = data.filter(row => row.fromTable === currentFilterFromTable);
-    }
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    data.sort((a,b) => {
-      if (a[key] < b[key]) return asc ? -1 : 1;
-      if (a[key] > b[key]) return asc ? 1 : -1;
-      return 0;
-    });
-
-    const container = document.getElementById(tabName);
-    const tbody = container.querySelector('tbody');
-    tbody.innerHTML = data.map(row => `
-      <tr data-id="${row.id}">
-        <td contenteditable="true" class="p-2 name-cell">${row.name}</td>
-        <td contenteditable="true" class="p-2 quantity-cell">${row.quantity}</td>
-        ${tabName === 'purchase' ? `<td contenteditable="true" class="p-2 comment-cell">${row.comment || ''}</td>` : ''}
-        <td class="p-2 space-x-2">
-          ${tabName !== 'purchase' ? `<button class="add-to-purchase bg-green-500 text-white px-2 rounded">Nakup</button>` : ''}
-          <button class="delete-btn bg-red-500 text-white px-2 rounded">Vymazať</button>
-        </td>
-      </tr>
-    `).join('');
-
-    // Перестворити обробники після оновлення таблиці
-    tbody.querySelectorAll('.delete-btn').forEach(btn => {
-      btn.onclick = async (e) => {
-        const id = e.target.closest('tr').dataset.id;
-        await deleteRow(tabName, id);
+      if (name && quantityInput) {
+        const insertData = tabName === 'purchase' ? { name, quantity: quantityInput, comment } : { name, quantity };
+        await client.from(tabName).insert([insertData]);
         renderTable(tabName);
-      };
+      }
     });
 
-    tbody.querySelectorAll('.add-to-purchase').forEach(btn => {
-      btn.onclick = async (e) => {
-        const tr = e.target.closest('tr');
-        const id = tr.dataset.id;
-        const name = tr.querySelector('.name-cell').textContent.trim();
-        const quantity = tr.querySelector('.quantity-cell').textContent.trim();
-        await addToPurchase(id, name, quantity, tabName);
-      };
-    });
+    const tbody = document.getElementById(`${tabName}-table`);
+    tbody.innerHTML = '';
+
+    if (data) {
+      data.sort((a, b) => {
+        const valA = a[currentSort.key];
+        const valB = b[currentSort.key];
+        if(currentSort.key === 'quantity'){
+          return currentSort.asc
+            ? parseFloat(valA) - parseFloat(valB)
+            : parseFloat(valB) - parseFloat(valA);
+        }
+        return currentSort.asc
+          ? valA.toString().localeCompare(valB.toString(), undefined, { numeric: true })
+          : valB.toString().localeCompare(valA.toString(), undefined, { numeric: true });
+      });
+
+      for (const item of data) {
+        const isLow = (tabName === 'stock' && item.quantity <= 2) ||
+                      ((tabName === 'alcohol' || tabName === 'nonalcohol') && item.quantity <= 5);
+
+        const quantityDisplay = tabName === 'capovane' ? item.quantity : parseFloat(item.quantity).toFixed(1);
+
+        let row = document.createElement('tr');
+        row.classList.add(isLow ? 'bg-red-300' : 'bg-white');
+        row.innerHTML = `
+          <td class="border px-4 py-2">${item.name}</td>
+          <td class="border px-4 py-2">${quantityDisplay}</td>
+          <td class="border px-4 py-2">
+            <button onclick="editItem('${tabName}', ${item.id})" class="bg-yellow-300 px-2 rounded">Редагувати</button>
+            <button onclick="deleteItem('${tabName}', ${item.id})" class="bg-red-400 px-2 rounded ml-1">Видалити</button>
+          </td>
+          ${tabName === 'purchase' ? `<td class="border px-4 py-2">${item.comment || ''}</td>` : ''}
+          ${tabName === 'purchase' ? `
+            <td class="border px-4 py-2">
+              <select id="move-to-${item.id}">
+                <option value="alcohol">Alcohol</option>
+                <option value="nonalcohol">NonAlcohol</option>
+                <option value="stock">Stock</option>
+                <option value="monin">Monin</option>
+                <option value="capovane">Capovane</option>
+              </select>
+              <button onclick="purchaseItem(${item.id}, '${item.name}', '${tabName}')" class="bg-green-500 text-white px-2 rounded ml-1">Закуплено</button>
+            </td>
+          ` : ''}
+          ${tabName !== 'purchase' ? `<td class="border px-4 py-2"><button onclick="addToPurchase(${item.id}, '${item.name}', ${item.quantity}, '${tabName}')" class="bg-blue-500 text-white px-2 rounded">В Nakup</button></td>` : ''}
+        `;
+        tbody.appendChild(row);
+      }
+    }
+
+    if (tabName === 'purchase') {
+      updatePurchasedSummary();
+    }
   }
 
-  // Відкрити за замовчуванням вкладку "nonalcohol"
-  renderTable('nonalcohol');
-  document.querySelector('.sidebar-tab[data-tab="nonalcohol"]').classList.add('bg-gray-300');
-</script>
+  // Сортування
+  function sortBy(tab, key) {
+    if(currentSort.key === key){
+      currentSort.asc = !currentSort.asc;
+    } else {
+      currentSort.key = key;
+      currentSort.asc = true;
+    }
+    renderTable(tab);
+  }
 
+  // Редагування
+  async function editItem(tab, id) {
+    const { data } = await client.from(tab).select('*').eq('id', id).single();
+    if (!data) return alert('Item not found');
+
+    const newName = prompt('Введіть нову назву', data.name);
+    if (newName === null) return;
+    let newQuantity = prompt('Введіть нову кількість', data.quantity);
+    if (newQuantity === null) return;
+
+    if(tab !== 'capovane' && tab !== 'purchase'){
+      newQuantity = parseFloat(newQuantity);
+      if(isNaN(newQuantity) || newQuantity < 0){
+        alert('Невірне значення кількості');
+        return;
+      }
+    }
+
+    let updateData = { name: newName, quantity: newQuantity };
+
+    if(tab === 'purchase'){
+      const newComment = prompt('Введіть новий коментар', data.comment || '');
+      if(newComment === null) return;
+      updateData.comment = newComment;
+    }
+
+    await client.from(tab).update(updateData).eq('id', id);
+    renderTable(tab);
+  }
+
+  // Видалення
+  async function deleteItem(tab, id) {
+    if(!confirm('Видалити цей товар?')) return;
+    await client.from(tab).delete().eq('id', id);
+    renderTable(tab);
+  }
+
+  // Додавання в Nakup
+  async function addToPurchase(id, name, quantity, fromTable) {
+    await client.from('purchase').insert([{ name, quantity, comment: '', fromTable }]);
+    await client.from(fromTable).delete().eq('id', id);
+    renderTable('purchase');
+    renderTable(fromTable);
+  }
+
+  // Закупка товару із вибором категорії куди направити
+  async function purchaseItem(id, name, fromTable) {
+    const selectElem = document.getElementById(`move-to-${id}`);
+    const targetTable = selectElem.value;
+
+    // Отримуємо кількість товару у purchase
+    const { data: purchaseData, error } = await client.from('purchase').select('*').eq('id', id).single();
+    if(error || !purchaseData) {
+      alert('Не вдалось знайти товар у закупівлі');
+      return;
+    }
+    const quantity = purchaseData.quantity;
+
+    // Додаємо у вибрану таблицю
+    await client.from(targetTable).upsert({ name, quantity });
+
+    // Видаляємо з purchase
+    await client.from('purchase').delete().eq('id', id);
+
+    renderTable('purchase');
+    renderTable(targetTable);
+    updatePurchasedSummary();
+  }
+
+  // Підрахунок кількості закуплених товарів
+  async function updatePurchasedSummary() {
+    const { data } = await client.from('purchase').select('*');
+    let totalQuantity = 0;
+    if(data) {
+      for (const item of data) {
+        const q = parseFloat(item.quantity);
+        if(!isNaN(q)) totalQuantity += q;
+      }
+    }
+
+    let summaryDiv = document.getElementById('purchase-summary');
+    if(!summaryDiv){
+      summaryDiv = document.createElement('div');
+      summaryDiv.id = 'purchase-summary';
+      summaryDiv.className = 'p-4 mb-4 bg-green-200 rounded text-green-800 font-semibold';
+      document.getElementById('purchase').prepend(summaryDiv);
+    }
+    summaryDiv.textContent = `Загальна кількість закуплених товарів: ${totalQuantity.toFixed(1)}`;
+  }
+
+  // Спочатку показуємо alko
+  document.querySelector('[data-tab="purchase"]').click();
+
+</script>
 </body>
 </html>
