@@ -45,8 +45,15 @@
     <div id="purchase" class="tab-content hidden"></div>
   </div>
 
+  <!-- Модальне вікно для повідомлення про закупку -->
+  <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded shadow-lg max-w-sm text-center">
+      <p id="modal-message" class="mb-4 text-lg font-semibold"></p>
+      <button id="modal-close" class="bg-blue-500 text-white px-4 py-2 rounded">Закрити</button>
+    </div>
+  </div>
+
 <script>
-  // Ініціалізація Supabase
   const client = window.supabase.createClient(
     "https://wmjvkmdignmlnbphqxxd.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtanZrbWRpZ25tbG5icGhxeHhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1MTU0MzMsImV4cCI6MjA2NDA5MTQzM30.EnEcHJaVyOj6IPmBTR_L2U5BazeaWK3kLnE9aycVZC8"
@@ -77,6 +84,7 @@
       }
 
       renderTable(currentTab);
+      toggleMarkPurchasedBtn();
     });
   });
 
@@ -93,7 +101,7 @@
         <input type="text" id="${tabName}-name" placeholder="Meno" required class="border p-2 w-full rounded">
         ${tabName === 'capovane' 
           ? `<input type="text" id="${tabName}-quantity" placeholder="Zvyšok (букви або цифри)" required class="border p-2 w-full rounded">`
-          : `<input type="number" step="0.1" min="0" id="${tabName}-quantity" placeholder="Zvyšok (число)" required class="border p-2 w-full rounded" >`
+          : `<input type="number" step="0.1" min="0" id="${tabName}-quantity" placeholder="Zvyšок (число)" required class="border p-2 w-full rounded" >`
         }
         ${tabName === 'purchase' ? 
           `<textarea id="${tabName}-comment" placeholder="Коментар" class="border p-2 w-full rounded mb-2"></textarea>` 
@@ -109,94 +117,85 @@
         <thead>
           <tr class="bg-gray-200">
             <th class="p-2 border cursor-pointer" onclick="sortBy('${tabName}', 'name')">Meno</th>
-            <th class="p-2 border cursor-pointer" onclick="sortBy('${tabName}', 'quantity')">Zvyšok</th>
+            <th class="p-2 border cursor-pointer" onclick="sortBy('${tabName}', 'quantity')">Zvyšок</th>
             <th class="p-2 border">Зменити</th>
             ${tabName === 'purchase' ? '<th class="p-2 border">Коментар</th>' : ''}
-            ${tabName === 'purchase' ? '<th class="p-2 border">Дія</th>' : ''}
-            ${tabName !== 'purchase' ? '<th class="p-2 border">Додати в Nakup</th>' : ''}
+            ${tabName === 'purchase' ? '<th class="p-2 border">Видалити</th>' : ''}
+            ${tabName === 'purchase' ? '<th class="p-2 border">Закупка</th>' : ''}
+            ${tabName !== 'purchase' ? '<th class="p-2 border">В Nakup</th>' : ''}
           </tr>
         </thead>
-        <tbody id="${tabName}-table"></tbody>
+        <tbody></tbody>
       </table>
     `;
 
-    document.getElementById(`form-${tabName}`).addEventListener('submit', async (e) => {
+    const form = document.getElementById(`form-${tabName}`);
+    form.onsubmit = async e => {
       e.preventDefault();
       const name = document.getElementById(`${tabName}-name`).value.trim();
-      const quantityInput = document.getElementById(`${tabName}-quantity`).value.trim();
-      let quantity = quantityInput;
-
-      if(tabName !== 'capovane' && tabName !== 'purchase'){
-        quantity = parseFloat(quantityInput);
-        if (isNaN(quantity) || quantity < 0) {
-          alert("Будь ласка, введіть правильне числове значення кількості.");
-          return;
-        }
+      const quantityRaw = document.getElementById(`${tabName}-quantity`).value.trim();
+      let quantity = tabName === 'capovane' ? quantityRaw : parseFloat(quantityRaw);
+      if (!name || (tabName !== 'capovane' && (isNaN(quantity) || quantity < 0))) {
+        alert('Введіть коректні дані!');
+        return;
       }
-
-      let comment = '';
       if(tabName === 'purchase'){
-        comment = document.getElementById(`${tabName}-comment`).value.trim();
+        const comment = document.getElementById(`${tabName}-comment`).value.trim();
+        await client.from(tabName).insert([{ name, quantity, comment, category: tabName }]);
+      } else {
+        await client.from(tabName).insert([{ name, quantity }]);
       }
+      form.reset();
+      renderTable(tabName);
+    };
 
-      if (name && quantityInput) {
-        const insertData = tabName === 'purchase' ? { name, quantity: quantityInput, comment } : { name, quantity };
-        await client.from(tabName).insert([insertData]);
-        renderTable(tabName);
-      }
-    });
+    const tbody = container.querySelector('tbody');
 
-    const tbody = document.getElementById(`${tabName}-table`);
-    tbody.innerHTML = '';
-
-    if (data) {
-      data.sort((a, b) => {
-        const valA = a[currentSort.key];
-        const valB = b[currentSort.key];
-        if(currentSort.key === 'quantity'){
-          return currentSort.asc
-            ? parseFloat(valA) - parseFloat(valB)
-            : parseFloat(valB) - parseFloat(valA);
-        }
-        return currentSort.asc
-          ? valA.toString().localeCompare(valB.toString(), undefined, { numeric: true })
-          : valB.toString().localeCompare(valA.toString(), undefined, { numeric: true });
+    // Сортування
+    let sortedData = [...data];
+    if(currentSort.key){
+      sortedData.sort((a,b) => {
+        if(a[currentSort.key] < b[currentSort.key]) return currentSort.asc ? -1 : 1;
+        if(a[currentSort.key] > b[currentSort.key]) return currentSort.asc ? 1 : -1;
+        return 0;
       });
-
-      for (const item of data) {
-        const isLow = (tabName === 'stock' && item.quantity <= 2) ||
-                      ((tabName === 'alcohol' || tabName === 'nonalcohol') && item.quantity <= 5);
-
-        const quantityClass = isLow && tabName !== 'purchase' ? 'text-red-600 font-bold' : '';
-
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td class="border p-2">${item.name}</td>
-          <td class="border p-2 ${quantityClass}">
-            ${tabName === 'purchase' 
-              ? `<input type="text" value="${item.quantity}" data-id="${item.id}" data-table="${tabName}" class="w-full border p-1 rounded quantity-input">` 
-              : `<input type="number" step="0.1" min="0" value="${item.quantity}" data-id="${item.id}" data-table="${tabName}" class="w-full border p-1 rounded quantity-input">`
-            }
-          </td>
-          <td class="border p-2">
-            <button data-id="${item.id}" data-table="${tabName}" class="update-btn bg-green-500 text-white px-2 py-1 rounded">Зберегти</button>
-          </td>
-          ${tabName === 'purchase' ? `<td class="border p-2">
-            <input type="text" value="${item.comment || ''}" data-id="${item.id}" data-table="${tabName}" class="w-full border p-1 rounded comment-input">
-          </td>` : ''}
-          ${tabName === 'purchase' ? `<td class="border p-2">
-            <button data-id="${item.id}" data-table="${tabName}" class="delete-btn bg-red-500 text-white px-2 py-1 rounded">Видалити</button>
-          </td>` : ''}
-          ${tabName !== 'purchase' ? `<td class="border p-2">
-            <button data-id="${item.id}" data-table="${tabName}" class="add-to-purchase-btn bg-yellow-500 text-white px-2 py-1 rounded">В Nakup</button>
-          </td>` : ''}
-        `;
-        tbody.appendChild(row);
-      }
     }
 
-    // Обробники кнопок оновлення, видалення, додавання до Nakup
+    for(const item of sortedData){
+      const row = document.createElement('tr');
+      row.className = "border-b";
 
+      row.innerHTML = `
+        <td class="border p-2">${item.name}</td>
+        <td class="border p-2">
+          ${tabName === 'capovane' ? item.quantity : parseFloat(item.quantity).toFixed(2)}
+        </td>
+        <td class="border p-2">
+          <input type="${tabName === 'capovane' ? 'text' : 'number'}" step="${tabName === 'capovane' ? 'any' : '0.1'}" min="0" 
+            value="${item.quantity}" data-id="${item.id}" data-table="${tabName}" class="quantity-input border p-1 rounded w-full" />
+          <button data-id="${item.id}" data-table="${tabName}" class="update-btn bg-green-500 text-white px-2 py-1 rounded mt-1">Оновити</button>
+        </td>
+        ${tabName === 'purchase' ? `
+          <td class="border p-2">
+            <textarea data-id="${item.id}" data-table="${tabName}" class="w-full border p-1 rounded comment-input">${item.comment || ''}</textarea>
+          </td>
+          <td class="border p-2">
+            <button data-id="${item.id}" data-table="${tabName}" class="delete-btn bg-red-500 text-white px-2 py-1 rounded">Видалити</button>
+          </td>
+          <td class="border p-2">
+            <button data-id="${item.id}" data-table="${tabName}" data-category="${item.category || 'stock'}" class="purchase-btn bg-blue-600 text-white px-2 py-1 rounded">Закупка</button>
+          </td>
+        ` : `
+          <td class="border p-2">
+            <button data-id="${item.id}" data-table="${tabName}" class="add-to-purchase-btn bg-yellow-500 text-white px-2 py-1 rounded">В Nakup</button>
+          </td>
+        `}
+      `;
+
+      tbody.appendChild(row);
+    }
+
+    // Кнопки Оновити
     tbody.querySelectorAll('.update-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
@@ -217,11 +216,11 @@
           }
           await client.from(table).update({ quantity: q }).eq('id', id);
         }
-
         renderTable(table);
       });
     });
 
+    // Кнопки Видалити
     tbody.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
@@ -233,6 +232,7 @@
       });
     });
 
+    // Кнопки В Nakup
     tbody.querySelectorAll('.add-to-purchase-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
@@ -240,13 +240,49 @@
         const item = data.find(i => i.id == id);
         if(!item) return;
 
-        // Додаємо у purchase
-        await client.from('purchase').insert([{ name: item.name, quantity: item.quantity, comment: '' }]);
-        // Видаляємо з поточної категорії
+        await client.from('purchase').insert([{ name: item.name, quantity: item.quantity, comment: '', category: table }]);
         await client.from(table).delete().eq('id', id);
 
         alert(`Товар "${item.name}" додано у Nakup`);
         renderTable(table);
+      });
+    });
+
+    // Кнопки Закупка (повернути товар назад)
+    tbody.querySelectorAll('.purchase-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const table = btn.dataset.table;
+        const category = btn.dataset.category || 'stock';
+
+        const item = data.find(i => i.id == id);
+        if(!item) return;
+
+        // Додаємо назад у категорію
+        const { data: existingItems, error: existingError } = await client.from(category).select('*').eq('name', item.name);
+        if(existingError){
+          alert('Помилка пошуку в категорії: ' + existingError.message);
+          return;
+        }
+        if(existingItems && existingItems.length > 0){
+          const existing = existingItems[0];
+          const newQuantity = parseFloat(existing.quantity) + parseFloat(item.quantity);
+          await client.from(category).update({ quantity: newQuantity }).eq('id', existing.id);
+        } else {
+          await client.from(category).insert([{ name: item.name, quantity: item.quantity }]);
+        }
+
+        // Видаляємо з purchase
+        await client.from('purchase').delete().eq('id', id);
+
+        // Оновлюємо таблицю purchase
+        renderTable('purchase');
+
+        // Оновлюємо лічильник закупленого
+        updatePurchasedCount(parseFloat(item.quantity));
+
+        // Показуємо модальне вікно
+        showModal(`Закуплено товару: ${item.name}, кількість: ${item.quantity}`);
       });
     });
 
@@ -262,7 +298,28 @@
     renderTable(tabName);
   }
 
-  // Кнопка "Закуплено" — вона постійно в DOM, показуємо лише для purchase
+  // Лічильник закупленої кількості
+  let totalPurchased = 0;
+
+  function updatePurchasedCount(qty) {
+    totalPurchased += qty;
+  }
+
+  // Модальне вікно
+  const modal = document.getElementById('modal');
+  const modalMessage = document.getElementById('modal-message');
+  const modalCloseBtn = document.getElementById('modal-close');
+
+  function showModal(message) {
+    modalMessage.textContent = message + `\nЗагальна закуплена кількість: ${totalPurchased.toFixed(2)}`;
+    modal.classList.remove('hidden');
+  }
+
+  modalCloseBtn.addEventListener('click', () => {
+    modal.classList.add('hidden');
+  });
+
+  // Кнопка "Закуплено" (для переміщення усіх товарів із purchase у категорії)
   const markPurchasedBtn = document.createElement('button');
   markPurchasedBtn.id = 'mark-purchased-btn';
   markPurchasedBtn.textContent = 'Закуплено';
@@ -281,14 +338,7 @@
     }
 
     for (const item of purchaseItems) {
-      const nameLower = item.name.toLowerCase();
-      let category = 'stock';
-
-      if (nameLower.includes('ром') || nameLower.includes('вино') || nameLower.includes('горілка')) {
-        category = 'alcohol';
-      } else if (nameLower.includes('сік') || nameLower.includes('тонік') || nameLower.includes('вода')) {
-        category = 'nonalcohol';
-      }
+      const category = item.category || 'stock';
 
       const { data: existingItems, error: existingError } = await client.from(category).select('*').eq('name', item.name);
       if (existingError) {
@@ -304,10 +354,13 @@
         await client.from(category).insert([{ name: item.name, quantity: item.quantity }]);
       }
 
+      // Оновлюємо лічильник
+      updatePurchasedCount(parseFloat(item.quantity));
+
       await client.from('purchase').delete().eq('id', item.id);
     }
 
-    alert('Усі товари переміщено до відповідних категорій!');
+    alert(`Усі товари переміщено до відповідних категорій! Загальна закуплена кількість: ${totalPurchased.toFixed(2)}`);
     renderTable('purchase');
   });
 
@@ -320,7 +373,7 @@
     }
   }
 
-  // Ініціалізація - показуємо першу вкладку і кнопку, якщо purchase
+  // Ініціалізація
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
     const firstTab = document.getElementById(currentTab);
@@ -329,12 +382,6 @@
     toggleMarkPurchasedBtn();
   });
 
-  // Оновлення кнопки при зміні вкладки
-  document.querySelectorAll('.sidebar-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      toggleMarkPurchasedBtn();
-    });
-  });
 </script>
 </body>
 </html>
