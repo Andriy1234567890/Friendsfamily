@@ -160,7 +160,7 @@
 
       for (const item of data) {
         const isLow = (tabName === 'stock' && item.quantity <= 2) ||
-                      ((tabName === 'alcohol' || tabName === 'nonalcohol') && item.quantity <= 5);
+                      ((tabName === 'alcohol' || tabName === 'nonalcohol') && item.quantity <= 0,6);
 
         const quantityDisplay = tabName === 'capovane' ? item.quantity : parseFloat(item.quantity).toFixed(1);
 
