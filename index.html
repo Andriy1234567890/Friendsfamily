@@ -8,6 +8,7 @@
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex">
+
   <!-- Sidebar -->
   <div id="sidebar" class="bg-white w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 shadow-md">
     <nav>
@@ -54,27 +55,64 @@
 
   const categories = ['nonalcohol', 'alcohol', 'stock', 'monin', 'capovane', 'purchase'];
 
+  // Перемінна для сортування
+  let currentSort = { key: 'name', asc: true };
+
+  // Відкриття/закриття сайдбару для мобільних
   document.getElementById('menu-btn').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('-translate-x-full');
   });
 
+  // Обробники для табів у сайдбарі
   document.querySelectorAll('.sidebar-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-      const tab = document.getElementById(btn.dataset.tab);
-      tab.classList.remove('hidden');
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
 
+      // Відкрити вибрану вкладку
+      showTab(btn.dataset.tab);
+
+      // Закрити сайдбар на мобільних
       if (window.innerWidth < 768) {
         document.getElementById('sidebar').classList.add('-translate-x-full');
-        document.querySelector('h1').textContent = btn.textContent.trim();
       }
-
-      renderTable(btn.dataset.tab);
     });
   });
 
-  let currentSort = { key: 'name', asc: true };
+  // Функція для показу вибраної вкладки
+  function showTab(tabName) {
+    // Ховаємо всі вкладки
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    // Показуємо вибрану
+    const tab = document.getElementById(tabName);
+    tab.classList.remove('hidden');
 
+    // Оновлюємо заголовок
+    const sidebarBtn = document.querySelector(`.sidebar-tab[data-tab="${tabName}"]`);
+    if (sidebarBtn) {
+      document.querySelector('h1').textContent = sidebarBtn.textContent.trim();
+    }
+
+    // Рендеримо таблицю
+    renderTable(tabName);
+  }
+
+  // Автоматично відкриваємо першу вкладку при завантаженні
+  window.addEventListener('DOMContentLoaded', () => {
+    showTab(categories[0]);
+  });
+
+  // Функція сортування
+  function sortBy(tabName, key) {
+    if(currentSort.key === key){
+      currentSort.asc = !currentSort.asc;
+    } else {
+      currentSort.key = key;
+      currentSort.asc = true;
+    }
+    renderTable(tabName);
+  }
+
+  // Основна функція рендеру таблиці
   async function renderTable(tabName) {
     const { data, error } = await client.from(tabName).select('*');
     if(error){
@@ -115,266 +153,158 @@
       </table>
     `;
 
+    // Обробка додавання нового запису
     document.getElementById(`form-${tabName}`).addEventListener('submit', async (e) => {
       e.preventDefault();
-      const name = document.getElementById(`${tabName}-name`).value.trim();
-      const quantityInput = document.getElementById(`${tabName}-quantity`).value.trim();
-      let quantity = quantityInput;
 
-      if(tabName !== 'capovane' && tabName !== 'purchase'){
-        quantity = parseFloat(quantityInput);
-        if (isNaN(quantity) || quantity < 0) {
-          alert("Будь ласка, введіть правильне числове значення кількості.");
-          return;
-        }
+      const nameInput = document.getElementById(`${tabName}-name`);
+      const quantityInput = document.getElementById(`${tabName}-quantity`);
+      const commentInput = tabName === 'purchase' ? document.getElementById(`${tabName}-comment`) : null;
+
+      if (!nameInput.value || !quantityInput.value) return;
+
+      const newRow = {
+        name: nameInput.value.trim(),
+        quantity: tabName === 'capovane' ? quantityInput.value.trim() : parseFloat(quantityInput.value),
+      };
+      if (tabName === 'purchase' && commentInput) {
+        newRow.comment = commentInput.value.trim();
       }
 
-      let comment = '';
-      if(tabName === 'purchase'){
-        comment = document.getElementById(`${tabName}-comment`).value.trim();
-      }
-
-      if (name && quantityInput) {
-        const insertData = tabName === 'purchase' ? { name, quantity: quantityInput, comment } : { name, quantity };
-        await client.from(tabName).insert([insertData]);
+      const { error } = await client.from(tabName).insert([newRow]);
+      if (error) {
+        alert('Помилка при додаванні: ' + error.message);
+      } else {
+        nameInput.value = '';
+        quantityInput.value = '';
+        if (commentInput) commentInput.value = '';
         renderTable(tabName);
       }
     });
 
+    // Сортуємо дані
+    data.sort((a, b) => {
+      let valA = a[currentSort.key];
+      let valB = b[currentSort.key];
+
+      if(currentSort.key === 'name'){
+        valA = valA ? valA.toLowerCase() : '';
+        valB = valB ? valB.toLowerCase() : '';
+        if(valA < valB) return currentSort.asc ? -1 : 1;
+        if(valA > valB) return currentSort.asc ? 1 : -1;
+        return 0;
+      } else {
+        // числове сортування
+        return currentSort.asc ? (valA - valB) : (valB - valA);
+      }
+    });
+
+    // Заповнюємо tbody
     const tbody = document.getElementById(`${tabName}-table`);
     tbody.innerHTML = '';
 
-    if (data) {
-      data.sort((a, b) => {
-        const valA = a[currentSort.key];
-        const valB = b[currentSort.key];
-        if(currentSort.key === 'quantity'){
-          return currentSort.asc
-            ? parseFloat(valA) - parseFloat(valB)
-            : parseFloat(valB) - parseFloat(valA);
+    data.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-gray-100';
+
+      tr.innerHTML = `
+        <td class="border px-2 py-1">${row.name || ''}</td>
+        <td class="border px-2 py-1">${row.quantity || ''}</td>
+        <td class="border px-2 py-1">
+          <button class="edit-btn bg-yellow-400 px-2 rounded" data-id="${row.id}" data-tab="${tabName}">Редагувати</button>
+        </td>
+        ${tabName === 'purchase' ? `<td class="border px-2 py-1">${row.comment || ''}</td>` : ''}
+        ${tabName === 'purchase' 
+          ? `<td class="border px-2 py-1"><button class="delete-btn bg-red-500 text-white px-2 rounded" data-id="${row.id}" data-tab="${tabName}">Видалити</button></td>` 
+          : `<td class="border px-2 py-1"><button class="to-purchase-btn bg-green-500 text-white px-2 rounded" data-id="${row.id}" data-tab="${tabName}">В Nakup</button></td>`
         }
-        return currentSort.asc
-          ? valA.toString().localeCompare(valB.toString(), undefined, { numeric: true })
-          : valB.toString().localeCompare(valA.toString(), undefined, { numeric: true });
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Обробники кнопок редагування
+    tbody.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const tab = btn.dataset.tab;
+
+        const { data: item } = await client.from(tab).select('*').eq('id', id).single();
+        if(!item) return alert('Помилка: не знайдено');
+
+        // Прості prompt для редагування
+        const newName = prompt('Введіть нове ім’я', item.name);
+        if (newName === null) return;
+        const newQuantity = prompt('Введіть новий залишок', item.quantity);
+        if (newQuantity === null) return;
+        let newComment = null;
+        if(tab === 'purchase') {
+          newComment = prompt('Введіть коментар', item.comment || '');
+          if (newComment === null) return;
+        }
+
+        const updateData = {
+          name: newName.trim(),
+          quantity: tab === 'capovane' ? newQuantity.trim() : parseFloat(newQuantity),
+        };
+        if(tab === 'purchase') updateData.comment = newComment.trim();
+
+        const { error } = await client.from(tab).update(updateData).eq('id', id);
+        if(error){
+          alert('Помилка оновлення: ' + error.message);
+        } else {
+          renderTable(tab);
+        }
       });
+    });
 
-      for (const item of data) {
-        const isLow = (tabName === 'stock' && item.quantity <= 2) ||
-                      ((tabName === 'alcohol' || tabName === 'nonalcohol') && item.quantity <= 0.5);
-
-        const quantityClass = isLow && tabName !== 'purchase' ? 'text-red-600 font-bold' : '';
-
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td class="border p-2">${item.name}</td>
-          <td class="border p-2 ${quantityClass}">
-            ${
-              tabName === 'purchase'
-                ? `<input type="number" step="0.1" min="0" value="${item.quantity}" data-id="${item.id}" data-table="${tabName}" class="w-full border p-1 rounded quantity-input">`
-                : `<input type="number" step="0.1" min="0" value="${item.quantity}" data-id="${item.id}" data-table="${tabName}" class="w-full border p-1 rounded quantity-input">`
-            }
-          </td>
-          <td class="border p-2">
-            <button data-id="${item.id}" data-table="${tabName}" class="update-btn bg-green-400 px-2 py-1 rounded">Оновити</button>
-            <button data-id="${item.id}" data-table="${tabName}" class="delete-btn bg-red-400 px-2 py-1 rounded ml-1">Видалити</button>
-          </td>
-          ${tabName === 'purchase' ? `<td class="border p-2"><textarea data-id="${item.id}" data-table="${tabName}" class="comment-input w-full border rounded p-1">${item.comment || ''}</textarea></td>` : ''}
-          ${tabName === 'purchase' ? `<td class="border p-2"><button data-id="${item.id}" class="zakup-btn bg-blue-600 text-white px-2 py-1 rounded">Закуплено</button></td>` : ''}
-          ${tabName !== 'purchase' ? `<td class="border p-2"><button data-id="${item.id}" data-table="${tabName}" class="to-purchase-btn bg-yellow-400 px-2 py-1 rounded">В Накуп</button></td>` : ''}
-        `;
-        tbody.appendChild(row);
-      }
-
-      // Додати обробники для кнопок в таблиці
-      tbody.querySelectorAll('.update-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const id = btn.dataset.id;
-          const table = btn.dataset.table;
-          const inputQty = tbody.querySelector(`input.quantity-input[data-id="${id}"][data-table="${table}"]`);
-          const quantity = parseFloat(inputQty.value);
-          if(isNaN(quantity) || quantity < 0){
-            alert("Будь ласка, введіть коректне число кількості");
-            return;
+    // Обробники кнопок видалення (лише для purchase)
+    tbody.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const tab = btn.dataset.tab;
+        if(confirm('Ви впевнені, що хочете видалити цей запис?')){
+          const { error } = await client.from(tab).delete().eq('id', id);
+          if(error){
+            alert('Помилка видалення: ' + error.message);
+          } else {
+            renderTable(tab);
           }
-
-          let updateObj = { quantity };
-          if(table === 'purchase'){
-            const commentElem = tbody.querySelector(`textarea.comment-input[data-id="${id}"]`);
-            updateObj.comment = commentElem.value.trim();
-          }
-
-          await client.from(table).update(updateObj).eq('id', id);
-          renderTable(table);
-        });
+        }
       });
+    });
 
-      tbody.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const id = btn.dataset.id;
-          const table = btn.dataset.table;
-          if(confirm('Видалити цей запис?')){
-            await client.from(table).delete().eq('id', id);
-            renderTable(table);
-          }
-        });
+    // Кнопки "В Nakup" для додавання в purchase
+    tbody.querySelectorAll('.to-purchase-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const tab = btn.dataset.tab;
+
+        const { data: item } = await client.from(tab).select('*').eq('id', id).single();
+        if(!item) return alert('Помилка: не знайдено');
+
+        // Додаємо в purchase
+        const { error } = await client.from('purchase').insert([{
+          name: item.name,
+          quantity: item.quantity,
+          comment: ''
+        }]);
+        if(error) {
+          alert('Помилка при додаванні в Nakup: ' + error.message);
+          return;
+        }
+
+        // Видаляємо зі старої таблиці
+        const { error: delErr } = await client.from(tab).delete().eq('id', id);
+        if(delErr) {
+          alert('Помилка при видаленні зі старої таблиці: ' + delErr.message);
+          return;
+        }
+
+        renderTable(tab);
+        if(tab !== 'purchase') renderTable('purchase');
       });
-
-      tbody.querySelectorAll('.to-purchase-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const id = btn.dataset.id;
-          const fromTable = btn.dataset.table;
-          const item = data.find(x => x.id == id);
-          if(!item) return;
-
-          // Видаляємо з поточної категорії
-          await client.from(fromTable).delete().eq('id', id);
-          // Додаємо до purchase
-          await client.from('purchase').insert([{name: item.name, quantity: item.quantity, comment: ''}]);
-          renderTable(fromTable);
-          renderTable('purchase');
-        });
-      });
-
-      // Для purchase: кнопка "Закуплено" відкриває модальне вікно
-      if(tabName === 'purchase'){
-        tbody.querySelectorAll('.zakup-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const id = btn.dataset.id;
-            const item = data.find(x => x.id == id);
-            openModalZakup(item);
-          });
-        });
-      }
-
-      // Всі input кількості можна тут додатково слухати на подію "input" для валідації
-    }
-  }
-
-  function sortBy(tabName, key) {
-    if(currentSort.key === key){
-      currentSort.asc = !currentSort.asc;
-    } else {
-      currentSort.key = key;
-      currentSort.asc = true;
-    }
-    renderTable(tabName);
-  }
-
-  // Модальне вікно "Закуплено"
- function openModalZakup(item) {
-  let modal = document.getElementById('modalZakup');
-  if(!modal){
-    modal = document.createElement('div');
-    modal.id = 'modalZakup';
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden';
-    modal.innerHTML = `
-      <div class="bg-white p-6 rounded max-w-sm w-full">
-        <h2 class="text-lg font-bold mb-4">Закуплено: <span id="modalItemName"></span></h2>
-        <label class="block mb-2">Введіть кількість:</label>
-        <input type="number" step="0.1" min="0" id="modalQuantity" class="border p-2 rounded w-full mb-4" />
-        <label class="block mb-2">Коментар:</label>
-        <textarea id="modalComment" class="border p-2 rounded w-full mb-4"></textarea>
-        <label class="block mb-2">Обрати категорію для переміщення:</label>
-        <select id="modalCategory" class="border p-2 rounded w-full mb-4">
-          <option value="" disabled selected>Оберіть категорію</option>
-          <option value="nonalcohol">Nealko</option>
-          <option value="alcohol">Alko</option>
-          <option value="stock">Sklad</option>
-          <option value="monin">Monin</option>
-          <option value="capovane">Čapované</option>
-        </select>
-        <div class="flex justify-end gap-4">
-          <button id="modalCancel" class="bg-gray-300 px-4 py-2 rounded">Відміна</button>
-          <button id="modalConfirm" class="bg-blue-600 text-white px-4 py-2 rounded">Підтвердити</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-
-    document.getElementById('modalCancel').addEventListener('click', () => {
-      modal.classList.add('hidden');
     });
   }
-
-  document.getElementById('modalItemName').textContent = item.name;
-  document.getElementById('modalQuantity').value = item.quantity;
-  document.getElementById('modalComment').value = item.comment || '';
-  document.getElementById('modalCategory').value = '';
-
-  modal.classList.remove('hidden');
-
-  // Обробник підтвердження
-  const confirmBtn = document.getElementById('modalConfirm');
-
-  confirmBtn.replaceWith(confirmBtn.cloneNode(true));
-  const newConfirmBtn = document.getElementById('modalConfirm');
-
-  newConfirmBtn.addEventListener('click', async () => {
-    const qty = parseFloat(document.getElementById('modalQuantity').value);
-    const comment = document.getElementById('modalComment').value.trim();
-    const category = document.getElementById('modalCategory').value;
-
-    if(isNaN(qty) || qty < 0){
-      alert('Введіть коректну кількість');
-      return;
-    }
-    if(!category){
-      alert('Будь ласка, оберіть категорію для переміщення');
-      return;
-    }
-
-    // Оновлюємо запис у purchase
-    await client.from('purchase').update({quantity: qty, comment}).eq('id', item.id);
-
-    // Видаляємо з purchase
-    await client.from('purchase').delete().eq('id', item.id);
-
-    // Додаємо у вибрану категорію
-    await client.from(category).insert([{name: item.name, quantity: qty}]);
-
-    modal.classList.add('hidden');
-    renderTable('purchase');
-    renderTable(category);
-  });
-}
-
-
-    document.getElementById('modalItemName').textContent = item.name;
-    document.getElementById('modalQuantity').value = item.quantity;
-    document.getElementById('modalComment').value = item.comment || '';
-
-    modal.classList.remove('hidden');
-
-    // Обробник підтвердження
-    const confirmBtn = document.getElementById('modalConfirm');
-
-    // Знімаємо старий обробник, щоб не було кілька разів виклику
-    confirmBtn.replaceWith(confirmBtn.cloneNode(true));
-    const newConfirmBtn = document.getElementById('modalConfirm');
-
-    newConfirmBtn.addEventListener('click', async () => {
-      const qty = parseFloat(document.getElementById('modalQuantity').value);
-      const comment = document.getElementById('modalComment').value.trim();
-
-      if(isNaN(qty) || qty < 0){
-        alert('Введіть коректну кількість');
-        return;
-      }
-
-      // Оновлюємо запис у purchase
-      await client.from('purchase').update({quantity: qty, comment}).eq('id', item.id);
-
-      // Приклад: якщо quantity = 0, можна видалити з purchase
-      if(qty === 0){
-        await client.from('purchase').delete().eq('id', item.id);
-      }
-
-      modal.classList.add('hidden');
-      renderTable('purchase');
-    });
-  }
-
-  // Початкове завантаження
-  renderTable('nonalcohol');
-
 </script>
+</body>
+</html>
