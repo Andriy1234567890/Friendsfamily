@@ -47,61 +47,46 @@
   </div>
 
 <script>
-  // Ініціалізація Supabase
   const client = window.supabase.createClient(
     "https://wmjvkmdignmlnbphqxxd.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtanZrbWRpZ25tbG5icGhxeHhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1MTU0MzMsImV4cCI6MjA2NDA5MTQzM30.EnEcHJaVyOj6IPmBTR_L2U5BazeaWK3kLnE9aycVZC8"
   );
 
   const categories = ['nonalcohol', 'alcohol', 'stock', 'monin', 'capovane', 'purchase'];
-
-  // Перемінна для сортування
   let currentSort = { key: 'name', asc: true };
 
-  // Відкриття/закриття сайдбару для мобільних
+  // Мобільне меню
   document.getElementById('menu-btn').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('-translate-x-full');
   });
 
-  // Обробники для табів у сайдбарі
   document.querySelectorAll('.sidebar-tab').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-
-      // Відкрити вибрану вкладку
       showTab(btn.dataset.tab);
-
-      // Закрити сайдбар на мобільних
       if (window.innerWidth < 768) {
         document.getElementById('sidebar').classList.add('-translate-x-full');
       }
     });
   });
 
-  // Функція для показу вибраної вкладки
   function showTab(tabName) {
-    // Ховаємо всі вкладки
     document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-    // Показуємо вибрану
     const tab = document.getElementById(tabName);
     tab.classList.remove('hidden');
 
-    // Оновлюємо заголовок
     const sidebarBtn = document.querySelector(`.sidebar-tab[data-tab="${tabName}"]`);
     if (sidebarBtn) {
       document.querySelector('h1').textContent = sidebarBtn.textContent.trim();
     }
 
-    // Рендеримо таблицю
     renderTable(tabName);
   }
 
-  // Автоматично відкриваємо першу вкладку при завантаженні
   window.addEventListener('DOMContentLoaded', () => {
     showTab(categories[0]);
   });
 
-  // Функція сортування
   function sortBy(tabName, key) {
     if(currentSort.key === key){
       currentSort.asc = !currentSort.asc;
@@ -112,7 +97,6 @@
     renderTable(tabName);
   }
 
-  // Основна функція рендеру таблиці
   async function renderTable(tabName) {
     const { data, error } = await client.from(tabName).select('*');
     if(error){
@@ -143,17 +127,17 @@
           <tr class="bg-gray-200">
             <th class="p-2 border cursor-pointer" onclick="sortBy('${tabName}', 'name')">Meno</th>
             <th class="p-2 border cursor-pointer" onclick="sortBy('${tabName}', 'quantity')">Zvyšok</th>
-            <th class="p-2 border">Zmenit</th>
+            <th class="p-2 border">Змінити</th>
             ${tabName === 'purchase' ? '<th class="p-2 border">Коментар</th>' : ''}
             ${tabName === 'purchase' ? '<th class="p-2 border">Дія</th>' : ''}
-            ${tabName !== 'purchase' ? '<th class="p-2 border">Додати в Nakup</th>' : ''}
+            ${tabName !== 'purchase' ? '<th class="p-2 border">В Nakup</th>' : ''}
           </tr>
         </thead>
         <tbody id="${tabName}-table"></tbody>
       </table>
     `;
 
-    // Обробка додавання нового запису
+    // Додавання нового запису
     document.getElementById(`form-${tabName}`).addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -182,7 +166,7 @@
       }
     });
 
-    // Сортуємо дані
+    // Сортування
     data.sort((a, b) => {
       let valA = a[currentSort.key];
       let valB = b[currentSort.key];
@@ -194,12 +178,10 @@
         if(valA > valB) return currentSort.asc ? 1 : -1;
         return 0;
       } else {
-        // числове сортування
         return currentSort.asc ? (valA - valB) : (valB - valA);
       }
     });
 
-    // Заповнюємо tbody
     const tbody = document.getElementById(`${tabName}-table`);
     tbody.innerHTML = '';
 
@@ -208,56 +190,56 @@
       tr.className = 'hover:bg-gray-100';
 
       tr.innerHTML = `
-        <td class="border px-2 py-1">${row.name || ''}</td>
-        <td class="border px-2 py-1">${row.quantity || ''}</td>
         <td class="border px-2 py-1">
-          <button class="edit-btn bg-yellow-400 px-2 rounded" data-id="${row.id}" data-tab="${tabName}">Редагувати</button>
+          <input type="text" value="${row.name || ''}" data-id="${row.id}" data-tab="${tabName}" data-field="name" class="w-full border rounded px-1" />
         </td>
-        ${tabName === 'purchase' ? `<td class="border px-2 py-1">${row.comment || ''}</td>` : ''}
+        <td class="border px-2 py-1">
+          ${tabName === 'capovane' 
+            ? `<input type="text" value="${row.quantity || ''}" data-id="${row.id}" data-tab="${tabName}" data-field="quantity" class="w-full border rounded px-1" />`
+            : `<input type="number" step="0.1" min="0" value="${row.quantity || ''}" data-id="${row.id}" data-tab="${tabName}" data-field="quantity" class="w-full border rounded px-1" />`
+          }
+        </td>
+        <td class="border px-2 py-1">
+          <button class="delete-btn bg-red-500 text-white px-2 rounded" data-id="${row.id}" data-tab="${tabName}">Видалити</button>
+        </td>
+        ${tabName === 'purchase' ? `<td class="border px-2 py-1"><textarea data-id="${row.id}" data-tab="${tabName}" data-field="comment" class="w-full border rounded px-1">${row.comment || ''}</textarea></td>` : ''}
         ${tabName === 'purchase' 
-          ? `<td class="border px-2 py-1"><button class="delete-btn bg-red-500 text-white px-2 rounded" data-id="${row.id}" data-tab="${tabName}">Видалити</button></td>` 
+          ? `<td class="border px-2 py-1"><button class="purchase-done-btn bg-green-600 text-white px-2 rounded" data-id="${row.id}" data-tab="${tabName}">Закуплено</button></td>`
           : `<td class="border px-2 py-1"><button class="to-purchase-btn bg-green-500 text-white px-2 rounded" data-id="${row.id}" data-tab="${tabName}">В Nakup</button></td>`
         }
       `;
       tbody.appendChild(tr);
     });
 
-    // Обробники кнопок редагування
-    tbody.querySelectorAll('.edit-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        const tab = btn.dataset.tab;
+    // Inline редагування (input blur)
+    tbody.querySelectorAll('input, textarea').forEach(input => {
+      input.addEventListener('blur', async () => {
+        const id = input.dataset.id;
+        const tab = input.dataset.tab;
+        const field = input.dataset.field;
+        let value = input.value.trim();
 
-        const { data: item } = await client.from(tab).select('*').eq('id', id).single();
-        if(!item) return alert('Помилка: не знайдено');
-
-        // Прості prompt для редагування
-        const newName = prompt('Введіть нове ім’я', item.name);
-        if (newName === null) return;
-        const newQuantity = prompt('Введіть новий залишок', item.quantity);
-        if (newQuantity === null) return;
-        let newComment = null;
-        if(tab === 'purchase') {
-          newComment = prompt('Введіть коментар', item.comment || '');
-          if (newComment === null) return;
+        if (field === 'quantity' && tab !== 'capovane') {
+          value = parseFloat(value);
+          if(isNaN(value)) {
+            alert('Будь ласка, введіть числове значення для кількості');
+            renderTable(tab);
+            return;
+          }
         }
 
-        const updateData = {
-          name: newName.trim(),
-          quantity: tab === 'capovane' ? newQuantity.trim() : parseFloat(newQuantity),
-        };
-        if(tab === 'purchase') updateData.comment = newComment.trim();
+        const updateData = {};
+        updateData[field] = value;
 
         const { error } = await client.from(tab).update(updateData).eq('id', id);
         if(error){
           alert('Помилка оновлення: ' + error.message);
-        } else {
           renderTable(tab);
         }
       });
     });
 
-    // Обробники кнопок видалення (лише для purchase)
+    // Видалення
     tbody.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
@@ -273,7 +255,7 @@
       });
     });
 
-    // Кнопки "В Nakup" для додавання в purchase
+    // Кнопка "В Nakup"
     tbody.querySelectorAll('.to-purchase-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
@@ -282,7 +264,6 @@
         const { data: item } = await client.from(tab).select('*').eq('id', id).single();
         if(!item) return alert('Помилка: не знайдено');
 
-        // Додаємо в purchase
         const { error } = await client.from('purchase').insert([{
           name: item.name,
           quantity: item.quantity,
@@ -293,7 +274,6 @@
           return;
         }
 
-        // Видаляємо зі старої таблиці
         const { error: delErr } = await client.from(tab).delete().eq('id', id);
         if(delErr) {
           alert('Помилка при видаленні зі старої таблиці: ' + delErr.message);
@@ -302,6 +282,22 @@
 
         renderTable(tab);
         if(tab !== 'purchase') renderTable('purchase');
+      });
+    });
+
+    // Кнопка "Закуплено" у purchase
+    tbody.querySelectorAll('.purchase-done-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const tab = btn.dataset.tab;
+        if(confirm('Ви впевнені, що товар закуплено і його потрібно видалити?')){
+          const { error } = await client.from(tab).delete().eq('id', id);
+          if(error){
+            alert('Помилка видалення: ' + error.message);
+          } else {
+            renderTable(tab);
+          }
+        }
       });
     });
   }
